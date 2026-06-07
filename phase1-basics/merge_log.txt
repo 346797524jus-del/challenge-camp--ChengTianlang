@@ -1,0 +1,67 @@
+📝 开始合并文件...
+📂 处理文件: tool_result.json
+❌ 无法解析的 JSON 行，已跳过: {
+❌ 无法解析的 JSON 行，已跳过: "results": [
+❌ 无法解析的 JSON 行，已跳过: {
+❌ 无法解析的 JSON 行，已跳过: "trace_id": "T-1001",
+❌ 无法解析的 JSON 行，已跳过: "tool": "file_export",
+❌ 无法解析的 JSON 行，已跳过: "status": "success",
+❌ 无法解析的 JSON 行，已跳过: "output": "OK: exported to /home/user/报告_final.pdf\n\n<!-- cached -->",
+❌ 无法解析的 JSON 行，已跳过: "latency_ms": "312"
+❌ 无法解析的 JSON 行，已跳过: },
+❌ 无法解析的 JSON 行，已跳过: {
+❌ 无法解析的 JSON 行，已跳过: "trace_id": "T-1002",
+❌ 无法解析的 JSON 行，已跳过: "tool": "file_export",
+❌ 无法解析的 JSON 行，已跳过: "status": "fail",
+❌ 无法解析的 JSON 行，已跳过: "output": "ERROR: path not found: /tmp/???.docx   呃呃呃",
+❌ 无法解析的 JSON 行，已跳过: "latency_ms": 890
+❌ 无法解析的 JSON 行，已跳过: },
+❌ 无法解析的 JSON 行，已跳过: {
+❌ 无法解析的 JSON 行，已跳过: "trace_id": "T-1003",
+❌ 无法解析的 JSON 行，已跳过: "tool": "web_search",
+❌ 无法解析的 JSON 行，已跳过: "status": "success",
+❌ 无法解析的 JSON 行，已跳过: "output": "**麒麟** 驱动安装：1) 打开设制中心 2) 嗯…点更新 3) reboot!!!",
+❌ 无法解析的 JSON 行，已跳过: "latency_ms": 1200
+❌ 无法解析的 JSON 行，已跳过: }
+❌ 无法解析的 JSON 行，已跳过: ]
+❌ 无法解析的 JSON 行，已跳过: }
+📂 处理文件: user_behavior.json
+❌ 无法解析的 JSON 行，已跳过: [
+❌ 无法解析的 JSON 行，已跳过: {
+❌ 无法解析的 JSON 行，已跳过: "uid": "U001",
+❌ 无法解析的 JSON 行，已跳过: "time": "2026/6/2 09:15",
+❌ 无法解析的 JSON 行，已跳过: "action": "chat",
+❌ 无法解析的 JSON 行，已跳过: "content": "  嗯嗯…那个…帮我把　文档　导出成 PDF 吧！！  "
+❌ 无法解析的 JSON 行，已跳过: },
+❌ 无法解析的 JSON 行，已跳过: {
+❌ 无法解析的 JSON 行，已跳过: "uid": "U001",
+❌ 无法解析的 JSON 行，已跳过: "time": "2026-06-02T09:16:00",
+❌ 无法解析的 JSON 行，已跳过: "action": "chat",
+❌ 无法解析的 JSON 行，已跳过: "content": "啊不是 word 是 wps 啦 @@@"
+❌ 无法解析的 JSON 行，已跳过: },
+❌ 无法解析的 JSON 行，已跳过: {
+❌ 无法解析的 JSON 行，已跳过: "uid": "U002",
+❌ 无法解析的 JSON 行，已跳过: "time": "2026年6月2日 10:00",
+❌ 无法解析的 JSON 行，已跳过: "action": "click",
+❌ 无法解析的 JSON 行，已跳过: "content": "设置->隐私->***清除缓存***"
+❌ 无法解析的 JSON 行，已跳过: },
+❌ 无法解析的 JSON 行，已跳过: {
+❌ 无法解析的 JSON 行，已跳过: "uid": "U001",
+❌ 无法解析的 JSON 行，已跳过: "time": "2026/6/2 09:15",
+❌ 无法解析的 JSON 行，已跳过: "action": "chat",
+❌ 无法解析的 JSON 行，已跳过: "content": "  嗯嗯…那个…帮我把　文档　导出成 PDF 吧！！  "
+❌ 无法解析的 JSON 行，已跳过: },
+❌ 无法解析的 JSON 行，已跳过: {
+❌ 无法解析的 JSON 行，已跳过: "uid": "U003",
+❌ 无法解析的 JSON 行，已跳过: "time": "",
+❌ 无法解析的 JSON 行，已跳过: "action": "chat",
+❌ 无法解析的 JSON 行，已跳过: "content": "呃…就是…能不能别每次弹窗啊😅"
+❌ 无法解析的 JSON 行，已跳过: },
+❌ 无法解析的 JSON 行，已跳过: {
+❌ 无法解析的 JSON 行，已跳过: "user_id": "U004",
+❌ 无法解析的 JSON 行，已跳过: "timestamp": "2026-06-02 14:30:00",
+❌ 无法解析的 JSON 行，已跳过: "type": "voice",
+❌ 无法解析的 JSON 行，已跳过: "text": "然后然后然后帮我查一下那个麒麟系统怎么装驱动"
+❌ 无法解析的 JSON 行，已跳过: }
+❌ 无法解析的 JSON 行，已跳过: ]
+🎉 成功！清洗完成，共 0 条去重数据，已保存至 ./phase1-basics/merged_d2.jsonl

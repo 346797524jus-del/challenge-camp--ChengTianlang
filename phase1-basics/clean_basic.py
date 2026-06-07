@@ -31,4 +31,4 @@ df.to_csv("./phase1-basics/cleaned_dirty.csv",
           encoding='utf-8',
           header=False)  
 
-print(f"🎉 成功！清洗完成，共 {len(df)} 条数据，已保存至 ./phase1-basics/cleaned_dirty.csv")
+print(f"🎉 成功！合并完成，共 {len(df)} 条数据，已保存至 ./phase1-basics/cleaned_dirty.csv")

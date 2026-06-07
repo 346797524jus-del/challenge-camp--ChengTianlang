@@ -9,3 +9,5 @@ target/
 # 排除敏感配置文件（防止 API Key 泄露）
 .env
 *.local
+
+student-camp-data/

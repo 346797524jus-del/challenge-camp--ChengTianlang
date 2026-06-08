@@ -111,4 +111,3 @@ def merge_and_clean_d2():
 
 if __name__ == "__main__":
     merge_and_clean_d2()
-

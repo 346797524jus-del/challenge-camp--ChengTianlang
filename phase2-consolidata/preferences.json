@@ -29,7 +29,10 @@
             "pref_key": "output_style",
             "pref_value": "简洁、少废话",
             "version": "v1",
-            "note": "从对话S100抽取"
+            "note": "从对话 S100 抽取",
+            "preference_category": "explicit",
+            "conflict_evidence": "初始纳管版本，无竞争冲突",
+            "preference": "output_style"
         },
         {
             "pref_id": "P2",
@@ -37,7 +40,10 @@
             "pref_key": "output_style",
             "pref_value": "详细、带数据表格",
             "version": "v2",
-            "note": "用户纠正@@@"
+            "note": "用户纠正 @@@",
+            "preference_category": "correction",
+            "conflict_evidence": "初始纳管版本，无竞争冲突",
+            "preference": "output_style"
         },
         {
             "pref_id": "P3",
@@ -45,7 +51,10 @@
             "pref_key": "emoji_policy",
             "pref_value": "禁用",
             "version": "v1",
-            "note": "句首有呃…就是…"
+            "note": "句首有呃…就是…",
+            "preference_category": "explicit",
+            "conflict_evidence": "初始纳管版本，无竞争冲突",
+            "preference": "emoji_policy"
         },
         {
             "pref_id": "P4",
@@ -53,7 +62,10 @@
             "pref_key": "search_scope",
             "pref_value": "麒麟系统/驱动",
             "version": "v1",
-            "note": "含错别字麒麟"
+            "note": "含错别字麒麟",
+            "preference_category": "explicit",
+            "conflict_evidence": "初始纳管版本，无竞争冲突",
+            "preference": "search_scope"
         },
         {
             "pref_id": "P6",
@@ -61,7 +73,10 @@
             "pref_key": "security_level",
             "pref_value": "高",
             "version": "v1",
-            "note": "uid缺失"
+            "note": "uid 缺失",
+            "preference_category": "explicit",
+            "conflict_evidence": "初始纳管版本，无竞争冲突",
+            "preference": "security_level"
         },
         {
             "pref_id": "P7",
@@ -69,23 +84,32 @@
             "pref_key": "meeting_minutes_format",
             "pref_value": "三段式：背景、决定、待办",
             "version": "v1",
-            "note": "用户明确要求记住"
+            "note": "用户明确要求记住",
+            "preference_category": "explicit",
+            "conflict_evidence": "初始纳管版本，无竞争冲突",
+            "preference": "meeting_minutes_format"
         },
         {
             "pref_id": "P8",
             "uid": "U005",
             "pref_key": "meeting_minutes_format",
-            "pref_value": "bullet列表",
+            "pref_value": "bullet 列表",
             "version": "v2",
-            "note": "仅本次例外，不应覆盖长期偏好"
+            "note": "仅本次例外，不应覆盖长期偏好",
+            "preference_category": "temporary",
+            "conflict_evidence": "初始纳管版本，无竞争冲突",
+            "preference": "meeting_minutes_format"
         },
         {
             "pref_id": "P9",
             "uid": "u002",
             "pref_key": "emoji_policy",
-            "pref_value": "允许少量emoji",
+            "pref_value": "允许少量 emoji",
             "version": "v0",
-            "note": "管理员导入旧偏好，与用户表达冲突"
+            "note": "管理员导入旧偏好，与用户表达冲突",
+            "preference_category": "explicit",
+            "conflict_evidence": "初始纳管版本，无竞争冲突",
+            "preference": "emoji_policy"
         },
         {
             "pref_id": "P10",
@@ -93,7 +117,10 @@
             "pref_key": "privacy_policy",
             "pref_value": "不保存测试手机号",
             "version": "v1",
-            "note": "从S105抽取"
+            "note": "从 S105 抽取",
+            "preference_category": "explicit",
+            "conflict_evidence": "初始纳管版本，无竞争冲突",
+            "preference": "privacy_policy"
         },
         {
             "pref_id": "P11",
@@ -101,7 +128,10 @@
             "pref_key": "driver_update_entry",
             "pref_value": "系统更新",
             "version": "v1",
-            "note": "旧知识"
+            "note": "旧知识",
+            "preference_category": "explicit",
+            "conflict_evidence": "初始纳管版本，无竞争冲突",
+            "preference": "driver_update_entry"
         },
         {
             "pref_id": "P12",
@@ -109,7 +139,10 @@
             "pref_key": "driver_update_entry",
             "pref_value": "驱动管理器",
             "version": "v2",
-            "note": "用户纠正，需覆盖旧知识"
+            "note": "用户纠正，需覆盖旧知识",
+            "preference_category": "correction",
+            "conflict_evidence": "初始纳管版本，无竞争冲突",
+            "preference": "driver_update_entry"
         }
     ]
 }

@@ -1,0 +1,31 @@
+# === Python 编译缓存文件 ===
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# === 虚拟环境 ===
+venv/
+.venv/
+env/
+ENV/
+
+# === 操作系统与编辑器临时文件 ===
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# === 本地敏感与测试配置文件（防止泄露隐私） ===
+.env
+.env.local
+*.log
+local_config.yaml
+
+# === 临时测试或本地输出产物（可选） ===
+# 如果不需要把清洗出的结果提到代码库，可以取消下面这行的注释
+# *.json

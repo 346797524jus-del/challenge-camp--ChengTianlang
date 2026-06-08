@@ -41,6 +41,33 @@ filler_word_counter = Counter()
 # ==========================================
 # 2. 核心清洗与统计核心工具
 # ==========================================
+def clean_text_field(text):
+    """
+    🔥 终极文本全能标准清洗引擎（全域死角覆盖）
+    作用：一键根治所有隐藏制表符、多重空格、全角留白、以及官方指出的错别字
+    """
+    if not isinstance(text, str):
+        return text
+    
+    # 1. 自动纠正官方集训方案明确指出的核心错别字：奇麟 -> 麒麟
+    text = text.replace("奇麟", "麒麟")
+    
+    # 2. 强力清除各种变异空白
+    # [\s\u3000\xa0\u200b] 涵盖：标准空格、Tab(\t)、换行(\n)、中文全角空格(\u3000)、不换行空格(\xa0)、零宽空格(\u200b)
+    
+    # -------------------------------------------------------------
+    # 【方案 A：彻底删除所有内部空格】（默认启用：最适合纯中文口语，让文本变紧凑）
+    text = re.sub(r'[\s\u3000\xa0\u200b]+', '', text)
+    # -------------------------------------------------------------
+    
+    # -------------------------------------------------------------
+    # 【方案 B：如果您希望保留英文单词间的一个空格，请注释掉上方方案A，并解开下方两行】
+    # text = re.sub(r'[\s\u3000\xa0\u200b]+', ' ', text)
+    # text = text.strip()
+    # -------------------------------------------------------------
+    
+    return text
+
 def analyze_filler_words(text):
     """扫描并累计文本中的停顿词频次"""
     if not isinstance(text, str):
@@ -81,15 +108,16 @@ def clean_chat_logs():
                 if not line.strip(): continue
                 metrics["chat_logs_total"] += 1
                 
-                # 基准哈希去重
                 line_hash = hashlib.md5(line.encode('utf-8')).hexdigest()
                 if line_hash in seen_hashes: continue
                 seen_hashes.add(line_hash)
                 
                 data = json.loads(line)
                 if "text" in data:
-                    analyze_filler_words(data["text"])  # 统计口水词
-                    data["text"] = encrypt_sensitive_content(data["text"].strip())
+                    analyze_filler_words(data["text"])
+                    # 全域引擎深层净化
+                    standard_text = clean_text_field(data["text"])
+                    data["text"] = encrypt_sensitive_content(standard_text)
                 
                 cleaned_records.append(data)
                 metrics["chat_logs_cleaned"] += 1
@@ -116,7 +144,8 @@ def clean_tool_results():
                 data = json.loads(line)
                 if "raw_output" in data:
                     analyze_filler_words(data["raw_output"])
-                    data["raw_output"] = encrypt_sensitive_content(data["raw_output"].strip())
+                    standard_text = clean_text_field(data["raw_output"])
+                    data["raw_output"] = encrypt_sensitive_content(standard_text)
                 
                 cleaned_records.append(data)
                 metrics["tools_cleaned"] += 1
@@ -148,7 +177,7 @@ def clean_preferences():
                     continue
                 seen_pref_ids.add(pref_id)
                 
-                cleaned_row = {k: encrypt_sensitive_content(v.strip()) if v else "" for k, v in row.items()}
+                cleaned_row = {k: encrypt_sensitive_content(clean_text_field(v)) if v else "" for k, v in row.items()}
                 if not cleaned_row.get("uid"):
                     cleaned_row["uid"] = "SYSTEM_DEFAULT"
                     
@@ -191,7 +220,7 @@ def clean_knowledge_base():
             final_case = {}
             for k, v in case_data.items():
                 analyze_filler_words(v)
-                cleaned_v = v.replace(" ", " ").strip()
+                cleaned_v = clean_text_field(v)
                 final_case[k] = encrypt_sensitive_content(cleaned_v)
                 
             cleaned_cases.append(final_case)
@@ -206,7 +235,6 @@ def clean_knowledge_base():
 def generate_report():
     output_path = os.path.join(OUTPUT_DIR, "report.md")
     
-    # 转换为 Markdown 统计列表
     filler_rows = ""
     for word, count in filler_word_counter.most_common():
         filler_rows += f"| `{word}` | **{count}** 次 | {'🔥 高频重灾区' if count >= 3 else ' 正常口水词'} |\n"
@@ -217,16 +245,16 @@ def generate_report():
 
 ## 📋 一、 任务基调
 * **生成时间**：2026-06-08
-* **审计单元**：Kylin-Office-Agent ETL 自动化洗脑模块
+* **审计单元**：Kylin-Office-Agent ETL 自动化模块
 * **输出阵地**：`phase2-consolidata/` (当前归档目录)
 
 ---
 
 ## 📈 二、 核心资产数据量度表
 
-通过底层哈希去重引擎与黑名单过滤，洗净前后的全景流量对比如下：
+通过底层哈希去重引擎与黑名单过滤，洗净前后的全景流量对比如下 :
 
-| 数据资产类别 | 原始输入文件名 | 清洗前条数 | 清洗后条数 | 数据精简率 | 交付产物 |
+| 数据资产类别 | 原始输入文件名 | 清洗前条数 | 清洗后条数 | 数据精简化率 | 交付产物 |
 | :--- | :--- | :---: | :---: | :---: | :--- |
 | **会话历史日志** | `chat_logs_raw.jsonl` | {metrics['chat_logs_total']} | {metrics['chat_logs_cleaned']} | {(metrics['chat_logs_total']-metrics['chat_logs_cleaned'])/metrics['chat_logs_total']*100:.1f}% | `chat_logs.json` |
 | **外部工具追踪** | `tool_result_raw.jsonl` | {metrics['tools_total']} | {metrics['tools_cleaned']} | {(metrics['tools_total']-metrics['tools_cleaned'])/metrics['tools_total']*100:.1f}% | `tool_results.json` |
@@ -237,7 +265,7 @@ def generate_report():
 
 ## 🗣️ 三、 文本特征分析：停顿词/口水词统计
 
-为了给模型后续微调（Fine-Tuning）或 Prompt 优化提供支撑，清洗模块专门对原始口语化输入中的**停顿词/口水词**进行了全域捕获：
+为了给模型后续微调（Fine-Tuning）或 Prompt 优化提供支撑，清洗模块专门对原始口语化输入中的**停顿词/口水词**进行了全域捕获 :
 
 | 捕获停顿词特征 | 原始文本出现频次 | 严重评级 |
 | :--- | :---: | :--- |
@@ -249,17 +277,18 @@ def generate_report():
 ## 🛠️ 四、 核心异常处理及冲突消解
 
 ### 1. 冗余中转过滤 (Deduplication)
-* **网络失败重试去重**：拦截了 `tool_result_raw.jsonl` 中由于网络超时或并发重试引发的完全冗余行（如 `T-506` 错误重试包，做到“单次追踪，按实录入”）。
-* **人工标记废弃**：精准解析 `preferences_raw.csv`，对人工标记有 `note="重复记录"` 或 `pref_id` 碰撞的条目（如 `P5`）执行静默抛弃。
+* **网络失败重试去重**：拦截了 `tool_result_raw.jsonl` 中由于网络超时或并发重试引发的完全冗余行。
+* **人工标记废弃**：精准解析 `preferences_raw.csv`，对人工标记有 `note="重复记录"` 或 `pref_id` 碰撞的条目执行静默抛弃。
 
 ### 2. 偏好时间线冲突消解 (Version Control)
-针对多会话状态下用户偏好的反复与矛盾，采用高级消解策略：
+针对多会话状态下用户偏好的反复与矛盾，采用高级消解策略 :
 * **显式覆盖**：用户对月报格式的二次纠正（`P2` 详细版）成功压制并替换了初版偏好（`P1` 简洁版）。
 * **瞬时例外防护**：准确剥离了 `U005` 提到的 “今天这次例外”（`P8`），保护其长期制度化偏好（`P7` 三段式）不被覆盖。
 * **默认项健壮性补全**：发现 `P6` 记录中 `uid` 缺损，为了防止读取系统抛出 `KeyError`，清洗阶段已自动统一安全补全为 `SYSTEM_DEFAULT`。
 
-### 3. 数据噪音与全角碎屑清洗
-* **空格纠偏**：将 `knowledge_raw.txt` 命令行中混入的危险**全角空格（` `）**一律矫正为标准半角空格，防止命令切分报错。
+### 3. 数据全域噪音、错别字与全角碎屑清洗
+* **全域空白深层终结**：通过工业级广义空白正则过滤链，将全线文本中由于输入、传输导致的**全角空格（` `）、制表符（`\t`）、不可见零宽空格**以及多重冗余留白进行了全谱系饱和式清洗，确保下游模型输入纯净度。
+* **核心错别字修正**：根据赛题选拔指南，对全线文本中的 **“奇麟”** 错别字完成了全自动向 **“麒麟”** 官方正确词汇的对齐与替换。
 * **模板垃圾隔离**：自动剔除空数据块及用户测试粘贴留下的残留噪点行。
 
 ---
@@ -267,7 +296,7 @@ def generate_report():
 ## 🔒 五、 隐私与合规脱敏
 * **安全审计状态**：🛡️ PASSED
 * **脱敏触发总量**：累计拦截并不可逆加密敏感词 **{metrics['privacy_encrypted_count']}** 次。
-* **合规落地规范**：遵循《敏感数据隐私保护原则》，凡涉及明文邮箱、明文手机号（如测试账号 `13900001111` 等），已全部通过 **SHA-256** 单向哈希隐蔽化，杜绝日志落地中的明文外泄。
+* **合规落地规范**：遵循《敏感数据隐私保护原则》，凡涉及明文邮箱、明文手机号，已全部通过 **SHA-256** 单向哈希隐蔽化，杜绝日志落地中的明文外泄。
 """
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(report_content.strip())

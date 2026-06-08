@@ -29,7 +29,7 @@
             "pref_key": "output_style",
             "pref_value": "简洁、少废话",
             "version": "v1",
-            "note": "从对话 S100 抽取"
+            "note": "从对话S100抽取"
         },
         {
             "pref_id": "P2",
@@ -37,7 +37,7 @@
             "pref_key": "output_style",
             "pref_value": "详细、带数据表格",
             "version": "v2",
-            "note": "用户纠正 @@@"
+            "note": "用户纠正@@@"
         },
         {
             "pref_id": "P3",
@@ -45,15 +45,15 @@
             "pref_key": "emoji_policy",
             "pref_value": "禁用",
             "version": "v1",
-            "note": "句首有 呃…就是…"
+            "note": "句首有呃…就是…"
         },
         {
             "pref_id": "P4",
             "uid": "u003",
             "pref_key": "search_scope",
-            "pref_value": "奇麟系统/驱动",
+            "pref_value": "麒麟系统/驱动",
             "version": "v1",
-            "note": "含错别字 奇麟"
+            "note": "含错别字麒麟"
         },
         {
             "pref_id": "P6",
@@ -61,7 +61,7 @@
             "pref_key": "security_level",
             "pref_value": "高",
             "version": "v1",
-            "note": "uid 缺失"
+            "note": "uid缺失"
         },
         {
             "pref_id": "P7",
@@ -75,7 +75,7 @@
             "pref_id": "P8",
             "uid": "U005",
             "pref_key": "meeting_minutes_format",
-            "pref_value": "bullet 列表",
+            "pref_value": "bullet列表",
             "version": "v2",
             "note": "仅本次例外，不应覆盖长期偏好"
         },
@@ -83,7 +83,7 @@
             "pref_id": "P9",
             "uid": "u002",
             "pref_key": "emoji_policy",
-            "pref_value": "允许少量 emoji",
+            "pref_value": "允许少量emoji",
             "version": "v0",
             "note": "管理员导入旧偏好，与用户表达冲突"
         },
@@ -93,7 +93,7 @@
             "pref_key": "privacy_policy",
             "pref_value": "不保存测试手机号",
             "version": "v1",
-            "note": "从 S105 抽取"
+            "note": "从S105抽取"
         },
         {
             "pref_id": "P11",

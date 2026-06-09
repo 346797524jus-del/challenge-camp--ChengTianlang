@@ -1,55 +1,63 @@
-# 🤖 AI 编程小助手 - LangChain4j 实战项目
+# 🤖 AI 编程小助手 - 智能体雏形项目
 
-> 基于 LangChain4j + 通义千问的 AI 智能编程学习与求职辅导机器人
+> 基于 LangChain4j + DeepSeek 的 AI 智能体（Agent）项目，能够生成 WPS 文档并在线预览
 
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.3-brightgreen.svg)](https://spring.io/projects/spring-boot)
-[![Vue.js](https://img.shields.io/badge/Vue.js-3.3.4-4FC08D.svg)](https://vuejs.org/)
+[![Vue.js](https://img.shields.io/badge/Vue.js-3.4.0-4FC08D.svg)](https://vuejs.org/)
 [![LangChain4j](https://img.shields.io/badge/LangChain4j-1.1.0-blue.svg)](https://github.com/langchain4j/langchain4j)
 [![Java](https://img.shields.io/badge/Java-21-orange.svg)](https://www.oracle.com/java/)
 
+## ✨ 项目亮点
 
+本项目是一个 **AI 智能体（Agent）雏形**，采用 ReAct（思考-行动-观察）模式，让 AI 能够：
 
-大家好，我是程序员鱼皮。现在 AI 应用开发可以说是程序员必备的技能了，求职时能够大幅增加竞争力。之前我用 Spring AI 带大家做过一个 [开源的 AI 超级智能体项目](https://github.com/liyupi/yu-ai-agent)，这次我来带大家快速掌握另一个主流的 Java AI 应用开发框架 LangChain4j。
+1. **理解用户需求** - 分析用户想要什么类型的文档
+2. **自主调用工具** - 选择合适的工具生成文档
+3. **生成 WPS 文件** - 支持 Word、Excel、PPT 三种格式
+4. **在线预览下载** - 生成的文件可直接在网页端预览和下载
 
-这个教程项目也是我精心设计，拒绝枯燥的理论，而是用一个编程小助手项目带大家在实战中依次学习 LangChain4j 的主流用法。看完这个教程，你不仅学会了 LangChain4j，还直接多了一段项目经历，岂不美哉？
+### 🎯 核心功能
 
-项目视频教程：https://bilibili.com/video/BV1X4GGziEyr
+| 功能 | 说明 | 工具 |
+|------|------|------|
+| 📄 **生成 Word 文档** | 简历、报告、学习笔记等 | `generateWordDocument` / `generateResume` |
+| 📊 **生成 Excel 表格** | 数据统计、学习计划等 | `generateExcelSpreadsheet` / `generateStudyPlan` |
+| 📽️ **生成 PPT 演示文稿** | 项目汇报、知识分享等 | `generatePresentation` |
+| 🔍 **搜索面试题** | 实时获取最新面试题目 | `interviewQuestionSearch` |
+| 📁 **文件管理** | 在线预览、下载、删除生成的文件 | `FileManager` 面板 |
 
-文字教程：https://mp.weixin.qq.com/s/7cNh7ndeiWiHBjnkTkz_Zg （在公众号程序员鱼皮的文章）
+### 🏗️ 技术架构
 
-更多鱼皮原创项目教程、编程学习路线可以在 [编程导航学习网](https://www.codefather.cn/) 获取。
-
-⭐ 如果这个项目对您有帮助，请给鱼皮一个 Star，这会激励我继续爆肝输出更多干货教程，万分感谢！ 
-
-![](https://pic.yupi.icu/1/AI%E7%BC%96%E7%A8%8B%E5%B0%8F%E5%8A%A9%E6%89%8B%E9%A1%B9%E7%9B%AE.png)
-
-本项目中，会话记忆、结构化输出、RAG、工具调用、MCP、护轨、可观测性、AI 代码生成等等，都有从 0 的讲解和实践。
-
-
-## ✨ 项目介绍
-
-### 定位
-- 编程学习导师: 提供清晰的学习路线规划和个性化建议
-- 求职面试助手: 涵盖简历优化、面试技巧、高频题目解析
-- 代码答疑专家: 实时解答编程技术问题，提供代码示例
-
-### 技术
-
-#### AI 服务
-- **LangChain4j集成**: 采用业界领先的AI应用开发框架
-- **通义千问模型**: 基于阿里云大模型，专业可靠
-- **流式响应**: 实时打字机效果，提升用户体验
-
-#### 安全机制
-- **输入安全防护**: 检测敏感内容，确保应用安全
-
-#### 工具集成
-- **RAG检索增强**: 结合本地知识库，提供精准答案
-- **MCP协议支持**: 模型上下文协议，增强AI能力
-- **面试题搜索**: 实时抓取最新面试题目
-- **Web爬虫工具**: 获取实时技术资讯
-
-
+```
+┌─────────────────────────────────────┐
+│          Vue.js 3 前端               │
+│  ┌─────────┐ ┌────────┐ ┌────────┐  │
+│  │ 聊天界面 │ │文件管理│ │文件预览│  │
+│  └─────────┘ └────────┘ └────────┘  │
+└────────────────┬────────────────────┘
+                 │ HTTP / SSE
+┌────────────────┴────────────────────┐
+│        Spring Boot 后端              │
+│  ┌──────────┐ ┌──────────────────┐   │
+│  │Agent控制 │ │ 文件下载/内容API │   │
+│  └────┬─────┘ └──────────────────┘   │
+│       │                              │
+│  ┌────┴─────────────────────┐        │
+│  │   ReAct Agent 核心       │        │
+│  │   (思考-行动-观察循环)    │        │
+│  └────┬─────────────────────┘        │
+│       │                              │
+│  ┌────┴─────────────────────┐        │
+│  │   工具层 (Tool Layer)     │        │
+│  │ Word / Excel / PPT / 搜索│        │
+│  └──────────────────────────┘        │
+└────────────────┬────────────────────┘
+                 │
+┌────────────────┴────────────────────┐
+│         DeepSeek / 通义千问 API       │
+│         (LangChain4j 集成)           │
+└─────────────────────────────────────┘
+```
 
 ## 🚀 快速开始
 
@@ -58,87 +66,114 @@
 - **Java**: JDK 21+
 - **Node.js**: 16.0+
 - **Maven**: 3.6+
-- **通义千问API**: 需申请API密钥
-- **Big Model API**: 需申请API密钥
+- **API Key**: DeepSeek 或通义千问 API Key
 
 ### 启动步骤
 
-#### 1. 后端启动
+#### 方式一：一键启动（推荐）
+
+双击 `start.bat` 即可自动启动前后端服务。
+
+#### 方式二：手动启动
+
+##### 1. 配置 API Key
+
 ```bash
-# 克隆项目
-git clone <repository-url>
-cd ai-code-helper
+# 复制环境变量模板
+copy .env.example .env
 
-# 配置API密钥
-# 编辑 src/main/resources/application.yml
-# 填入您的通义千问 API 和 Big Model API 密钥
+# 编辑 .env 文件，填入你的 API Key
+# OPENAI_API_KEY=你的真实API Key
+```
 
-# 启动后端服务
+##### 2. 后端启动
+```bash
+cd phase3-advance
 mvn spring-boot:run
 ```
 
-#### 2. 前端启动
+##### 3. 前端启动
 ```bash
-# 进入前端目录
 cd ai-code-helper-frontend
-
-# 安装依赖
 npm install
-
-# 启动开发服务器
 npm run dev
 ```
 
-#### 3. 访问应用
-- 前端地址: `http://localhost:5173`
+##### 4. 访问应用
+- 前端地址: `http://localhost:3000`
 - 后端API: `http://localhost:8081/api`
 
+## 💡 使用示例
 
-
-## 技术架构
-
+### 生成 Word 文档
 ```
-┌─────────────────┐    ┌─────────────────┐
-│   Vue.js 前端    │────│  Spring Boot   │
-│   - 聊天界面     │    │    后端服务      │
-│   - 实时流式     │    │   - RESTful API │
-│   - Markdown    │    │   - SSE 推送     │
-└─────────────────┘    └─────────────────┘
-                              │
-                    ┌─────────────────┐
-                    │   LangChain4j   │
-                    │   - AI服务层    │
-                    │   - 工具集成    │
-                    │   - 安全防护    │
-                    └─────────────────┘
-                              │
-                    ┌─────────────────┐
-                    │   通义千问API    │
-                    │   - 对话模型    │
-                    │   - 嵌入模型    │
-                    │   - 流式输出    │
-                    └─────────────────┘
+用户: "帮我生成一份关于Java学习的报告"
+智能体: 调用 generateWordDocument 工具 → 生成 .docx 文件 → 返回下载链接
 ```
 
+### 生成 Excel 学习计划
+```
+用户: "帮我制定一份为期一周的Java学习计划"
+智能体: 调用 generateStudyPlan 工具 → 生成 .xlsx 文件 → 返回下载链接
+```
 
+### 生成 PPT 演示文稿
+```
+用户: "帮我生成一份关于Spring Boot的PPT"
+智能体: 调用 generatePresentation 工具 → 生成 .pptx 文件 → 返回下载链接
+```
 
-## 核心模块
+## 📁 项目结构
 
-- `AiCodeHelperService`: 核心对话服务
-- `QwenChatModelConfig`: 模型配置管理
-- `RagConfig`: 检索增强配置
-- `McpConfig`: 模型上下文协议
+```
+phase3-advance/
+├── src/main/java/com/yupi/aicodehelper/
+│   ├── ai/
+│   │   ├── agent/           # ReAct 智能体核心
+│   │   │   ├── ReActAgent.java      # 思考-行动-观察循环
+│   │   │   ├── AgentStep.java       # 步骤记录
+│   │   │   ├── AgentResponse.java   # 响应封装
+│   │   │   └── AgentConfig.java     # 智能体配置
+│   │   └── tools/           # 工具层
+│   │       ├── WordDocumentTool.java   # Word 文档生成
+│   │       ├── ExcelDocumentTool.java  # Excel 表格生成
+│   │       ├── PptDocumentTool.java    # PPT 演示文稿生成
+│   │       ├── InterviewQuestionTool.java # 面试题搜索
+│   │       ├── ToolExecutor.java       # 工具执行器
+│   │       └── ToolSpecifications.java # 工具规范
+│   └── controller/
+│       ├── AgentController.java       # 智能体 API
+│       ├── FileDownloadController.java # 文件下载
+│       └── FileContentController.java  # 文件内容/列表 API
+├── ai-code-helper-frontend/
+│   └── src/
+│       ├── api/
+│       │   ├── agentApi.js        # 智能体 API 调用
+│       │   └── chatApi.js         # 对话 API 调用
+│       └── components/
+│           ├── FileManager.vue    # 文件管理面板
+│           ├── FilePreview.vue    # 文件在线预览
+│           └── AgentThoughtProcess.vue # 思考过程展示
+└── start.bat              # 一键启动脚本
+```
 
-- `InterviewQuestionTool`: 面试题搜索
-- `SafeInputGuardrail`: 输入安全防护
-- `ChatModelListener`: 对话监听器
+## 🔧 智能体工作原理
 
+本项目采用 **ReAct (Reasoning + Acting)** 模式：
 
+1. **思考 (Think)**: AI 分析用户需求，决定使用哪个工具
+2. **行动 (Act)**: 调用对应的文档生成工具
+3. **观察 (Observe)**: 获取工具执行结果
+4. **回答 (Answer)**: 根据结果给出最终答案
 
-## 致谢
+支持三种工具调用方式：
+- **Function Calling**: 优先使用模型的 function calling 机制
+- **文本指令**: 解析 `{{工具名:参数}}` 格式的文本指令
+- **关键词匹配**: 根据用户输入的关键词自动匹配工具
+
+## 📝 致谢
 
 - [LangChain4j](https://github.com/langchain4j/langchain4j) - 强大的AI应用开发框架
-- [阿里云通义千问](https://dashscope.aliyun.com/) - 优秀的大语言模型
-- [Spring Boot](https://spring.io/projects/spring-boot) - 简化的Java开发框架
+- [Apache POI](https://poi.apache.org/) - Office 文档处理库
+- [Spring Boot](https://spring.io/projects/spring-boot) - Java开发框架
 - [Vue.js](https://vuejs.org/) - 渐进式JavaScript框架
-

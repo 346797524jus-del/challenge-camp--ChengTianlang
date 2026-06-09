@@ -16,13 +16,13 @@ import java.util.List;
 @Configuration
 public class OllamaModelConfig {
 
-    @Value("${langchain4j.ollama.chat-model.base-url}")
+    @Value("${langchain4j.open-ai.chat-model.base-url}")
     private String baseUrl;
 
-    @Value("${langchain4j.ollama.chat-model.model-name}")
+    @Value("${langchain4j.open-ai.chat-model.model-name}")
     private String modelName;
 
-    @Value("${langchain4j.ollama.chat-model.api-key}")
+    @Value("${langchain4j.open-ai.chat-model.api-key}")
     private String apiKey;
 
     @Resource

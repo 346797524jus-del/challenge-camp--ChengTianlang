@@ -1,5 +1,7 @@
 ### CUSTOM ###
 application-local.yml
+# .env 文件包含 API Key 等敏感信息，禁止入库
+.env
 
 HELP.md
 target/
@@ -34,3 +36,6 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Generated Documents ###
+generated-docs/

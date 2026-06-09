@@ -7,6 +7,8 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
 
+import org.springframework.stereotype.Component;
+
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -17,6 +19,7 @@ import java.util.List;
  * 面试题搜索工具
  */
 @Slf4j
+@Component
 public class InterviewQuestionTool {
 
     /**

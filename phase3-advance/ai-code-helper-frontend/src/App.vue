@@ -3,20 +3,38 @@
     <!-- 头部标题 -->
     <div class="app-header">
       <h1 class="app-title">AI 编程小助手</h1>
-      <div class="app-subtitle">帮助您解答编程学习和求职面试相关问题</div>
-      <button class="settings-button" @click="toggleSettings" title="设置">⚙️ 设置</button>
+      <div class="app-subtitle">智能体模式 - 生成 WPS 文档并在线预览</div>
+      <div class="header-actions">
+        <button 
+          class="mode-button" 
+          :class="{ active: isAgentMode }"
+          @click="toggleMode" 
+          :title="isAgentMode ? '切换到普通模式' : '切换到智能体模式'"
+        >
+          {{ isAgentMode ? '🤖 智能体' : '💬 对话' }}
+        </button>
+        <button class="settings-button" @click="toggleSettings" title="设置">⚙️</button>
+      </div>
     </div>
 
     <!-- 聊天区域 -->
     <div class="chat-container">
       <!-- 消息列表 -->
       <div class="messages-container" ref="messagesContainer">
-        <div v-if="messages.length === 0" class="welcome-message">
+        <!-- 欢迎消息（无历史消息时显示） -->
+        <div v-if="messages.length === 0 && !isAiTyping" class="welcome-message">
           <div class="welcome-content">
-            <div class="welcome-icon">🤖</div>
-            <h2>欢迎使用 AI 编程小助手</h2>
-            <p>我可以帮助您：</p>
-            <ul>
+            <div class="welcome-icon">{{ isAgentMode ? '🤖' : '🤖' }}</div>
+            <h2>{{ isAgentMode ? '欢迎使用 AI 智能体' : '欢迎使用 AI 编程小助手' }}</h2>
+            <p>{{ isAgentMode ? '我可以帮您：' : '我可以帮助您：' }}</p>
+            <ul v-if="isAgentMode">
+              <li>📄 生成 Word 文档（简历、报告、学习笔记）</li>
+              <li>📊 生成 Excel 表格（学习计划、数据统计）</li>
+              <li>📽️ 生成 PPT 演示文稿（项目汇报、知识分享）</li>
+              <li>🔍 搜索面试题和编程知识</li>
+              <li>💡 解答编程技术问题</li>
+            </ul>
+            <ul v-else>
               <li>解答编程技术问题</li>
               <li>提供代码示例和解释</li>
               <li>协助求职面试准备</li>
@@ -51,7 +69,21 @@
             </div>
           </div>
         </div>
+
+        <!-- 智能体思考过程（显示在AI回复下方） -->
+        <AgentThoughtProcess 
+          v-if="isAgentMode && agentSteps.length > 0"
+          :steps="agentSteps"
+        />
       </div>
+
+      <!-- 文件管理面板（智能体模式下，固定在输入框上方） -->
+      <FileManager 
+        v-if="isAgentMode"
+        :refresh-trigger="fileRefreshTrigger"
+        :theme="theme"
+        @preview="openPreview"
+      />
 
       <!-- 输入框 -->
       <ChatInput
@@ -61,7 +93,7 @@
       />
     </div>
 
-    <!-- 连接状态提示 -->
+    <!-- 设置弹窗 -->
     <div v-if="showSettings" class="settings-modal-overlay">
       <div class="settings-modal">
         <h3>用户设置</h3>
@@ -96,6 +128,14 @@
       </div>
     </div>
 
+    <!-- 文件预览弹窗 -->
+    <FilePreview
+      v-if="previewFile"
+      :file-name="previewFile.name"
+      :file-type="previewFile.type"
+      @close="previewFile = null"
+    />
+
     <div v-if="connectionError" class="connection-error">
       <div class="error-content">
         <span class="error-icon">⚠️</span>
@@ -109,7 +149,11 @@
 import ChatMessage from './components/ChatMessage.vue'
 import ChatInput from './components/ChatInput.vue'
 import LoadingDots from './components/LoadingDots.vue'
+import AgentThoughtProcess from './components/AgentThoughtProcess.vue'
+import FilePreview from './components/FilePreview.vue'
+import FileManager from './components/FileManager.vue'
 import { chatWithSSE } from './api/chatApi.js'
+import { chatWithAgent } from './api/agentApi.js'
 import { generateMemoryId } from './utils/index.js'
 import { marked } from 'marked'
 
@@ -118,7 +162,10 @@ export default {
   components: {
     ChatMessage,
     ChatInput,
-    LoadingDots
+    LoadingDots,
+    AgentThoughtProcess,
+    FilePreview,
+    FileManager
   },
   data() {
     return {
@@ -129,6 +176,12 @@ export default {
       currentAiResponse: '',
       currentEventSource: null,
       connectionError: false,
+      // 智能体模式
+      isAgentMode: true, // 默认启用智能体模式
+      agentSteps: [],
+      fileRefreshTrigger: 0,
+      // 文件预览
+      previewFile: null,
       // personalization
       showSettings: false,
       userName: '',
@@ -140,21 +193,23 @@ export default {
   computed: {
     currentAiResponseRendered() {
       if (!this.currentAiResponse) return ''
-      // 配置marked选项
       marked.setOptions({
-        breaks: true, // 支持换行
-        gfm: true, // 支持GitHub风格的Markdown
-        sanitize: false, // 不过滤HTML（根据需要可以开启）
+        breaks: true,
+        gfm: true,
+        sanitize: false,
         highlight: function(code, lang) {
-          // 可以在这里添加代码高亮功能
           return code
         }
       })
-      return marked(this.currentAiResponse)
-    }
-    ,
+      let html = marked(this.currentAiResponse)
+      return html
+    },
     inputPlaceholder() {
-      return (this.userName ? this.userName + '，' : '') + '请输入您的编程问题...'
+      const prefix = this.userName ? this.userName + '，' : ''
+      if (this.isAgentMode) {
+        return prefix + '请输入您的问题，我可以生成文档、搜索面试题...'
+      }
+      return prefix + '请输入您的编程问题...'
     }
   },
   watch: {
@@ -163,39 +218,97 @@ export default {
     }
   },
   methods: {
+    toggleMode() {
+      this.isAgentMode = !this.isAgentMode
+      this.messages = []
+      this.agentSteps = []
+      this.currentAiResponse = ''
+      this.isAiTyping = false
+      this.isStreaming = false
+    },
+
     sendMessage(message) {
       // 添加用户消息
       this.addMessage(message, true)
       
-      // 开始AI回复
-      this.startAiResponse(message)
-    },
-    
-    addMessage(content, isUser = false) {
-      const message = {
-        id: Date.now() + Math.random(),
-        content,
-        isUser,
-        timestamp: new Date(),
-        userName: isUser ? (this.userName || '我') : 'AI',
-        avatarColor: isUser ? this.avatarColor : null
+      if (this.isAgentMode) {
+        // 智能体模式
+        this.startAgentResponse(message)
+      } else {
+        // 普通对话模式
+        this.startAiResponse(message)
       }
-      this.messages.push(message)
-      this.scrollToBottom()
     },
-    
+
+    // ===== 智能体模式 =====
+    async startAgentResponse(userMessage) {
+      this.isAiTyping = true
+      this.isStreaming = true
+      this.agentSteps = []
+      this.currentAiResponse = ''
+      this.connectionError = false
+
+      try {
+        const response = await chatWithAgent(userMessage)
+        
+        // 显示思考过程
+        if (response.steps) {
+          this.agentSteps = response.steps
+        }
+        
+        // 显示最终答案
+        if (response.finalAnswer) {
+          this.currentAiResponse = response.finalAnswer
+        }
+        
+        // 如果有生成的文件，添加文件下载和预览区域
+        if (response.generatedFiles && response.generatedFiles.length > 0) {
+          let fileLinksHtml = '\n\n---\n\n### 📁 生成的文件\n\n'
+          response.generatedFiles.forEach((filePath, index) => {
+            // 提取文件名
+            const fileName = filePath.split('\\').pop() || filePath.split('/').pop()
+            // 获取文件扩展名
+            const ext = fileName.split('.').pop().toLowerCase()
+            const fileType = ext === 'docx' ? 'Word' : ext === 'xlsx' ? 'Excel' : ext === 'pptx' ? 'PPT' : '文件'
+            const emoji = ext === 'docx' ? '📄' : ext === 'xlsx' ? '📊' : ext === 'pptx' ? '📽️' : '📁'
+            
+            fileLinksHtml += `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
+              <span>${emoji} <strong>${fileName}</strong></span>
+              <span style="display:flex;gap:8px;">
+                <a href="/api/files/${encodeURIComponent(fileName)}" download style="padding:4px 12px;background:#0b74ff;color:white;border-radius:4px;text-decoration:none;font-size:12px;">⬇️ 下载</a>
+                <button onclick="window.__openPreview('${fileName}', '${ext}')" style="padding:4px 12px;background:#10b981;color:white;border:none;border-radius:4px;cursor:pointer;font-size:12px;">👁️ 预览</button>
+              </span>
+            </div>`
+          })
+          this.currentAiResponse += fileLinksHtml
+          
+          // 刷新文件管理列表
+          this.fileRefreshTrigger++
+        }
+        
+        // 等待渲染完成
+        await this.$nextTick()
+        this.finishAiResponse()
+      } catch (error) {
+        console.error('智能体响应出错:', error)
+        this.currentAiResponse = '抱歉，智能体处理请求时出现错误。请检查后端服务是否正常运行。'
+        this.connectionError = true
+        setTimeout(() => { this.connectionError = false }, 5000)
+        this.finishAiResponse()
+      }
+    },
+
+    // ===== 普通对话模式 =====
     startAiResponse(userMessage) {
       this.isAiTyping = true
       this.isStreaming = true
       this.currentAiResponse = ''
       this.connectionError = false
       
-      // 关闭之前的连接
       if (this.currentEventSource) {
         this.currentEventSource.close()
       }
 
-      // 开始SSE连接
       this.currentEventSource = chatWithSSE(
         this.memoryId,
         userMessage,
@@ -212,7 +325,6 @@ export default {
 
     handleAiError(error) {
       console.error('AI 回复出错:', error)
-      // 如果已经拿到一些 AI 内容，就认为这是连接正常完成后的关闭或重试，不显示后端未连接提示。
       if (!this.currentAiResponse.trim()) {
         this.connectionError = true
         setTimeout(() => { this.connectionError = false }, 5000)
@@ -237,6 +349,19 @@ export default {
       }
     },
 
+    addMessage(content, isUser = false) {
+      const message = {
+        id: Date.now() + Math.random(),
+        content,
+        isUser,
+        timestamp: new Date(),
+        userName: isUser ? (this.userName || '我') : 'AI',
+        avatarColor: isUser ? this.avatarColor : null
+      }
+      this.messages.push(message)
+      this.scrollToBottom()
+    },
+
     scrollToBottom() {
       this.$nextTick(() => {
         const container = this.$refs.messagesContainer
@@ -250,9 +375,11 @@ export default {
       this.memoryId = generateMemoryId()
       console.log('聊天室ID:', this.memoryId)
     },
+
     toggleSettings() {
       this.showSettings = !this.showSettings
     },
+
     saveSettings() {
       localStorage.setItem('aich_userName', this.userName)
       localStorage.setItem('aich_theme', this.theme)
@@ -260,6 +387,7 @@ export default {
       this.showSettings = false
       document.documentElement.style.setProperty('--user-avatar-color', this.avatarColor)
     },
+
     loadSettings() {
       const name = localStorage.getItem('aich_userName')
       const theme = localStorage.getItem('aich_theme')
@@ -268,20 +396,28 @@ export default {
       if (theme) this.theme = theme
       if (color) this.avatarColor = color
       document.documentElement.style.setProperty('--user-avatar-color', this.avatarColor)
+    },
+
+    openPreview(file) {
+      this.previewFile = { name: file.name, type: file.type }
     }
   },
   mounted() {
     this.initializeChat()
     this.loadSettings()
+    // 注册全局预览函数
+    window.__openPreview = (fileName, fileType) => {
+      this.previewFile = { name: fileName, type: fileType }
+    }
   },
   
   beforeUnmount() {
     if (this.currentEventSource) {
       this.currentEventSource.close()
     }
+    delete window.__openPreview
   }
-  }
-
+}
 </script>
 
 <style scoped>
@@ -305,6 +441,51 @@ export default {
 
 .app-title { font-size: 20px; font-weight:700; color:#111827; margin:0 }
 .app-subtitle { font-size:13px; color:#6b7280; margin-top:4px }
+
+.header-actions {
+  position: absolute;
+  right: 14px;
+  top: 14px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.mode-button {
+  background: transparent;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #374151;
+}
+
+.mode-button:hover {
+  border-color: #0b74ff;
+  color: #0b74ff;
+}
+
+.mode-button.active {
+  background: #0b74ff;
+  border-color: #0b74ff;
+  color: white;
+}
+
+.settings-button {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+
+.settings-button:hover {
+  background: #f3f4f6;
+}
 
 .chat-container { flex:1; display:flex; flex-direction:column; align-items:center; overflow:hidden; padding:20px 12px }
 .messages-container { flex:1; overflow-y:auto; width:100%; max-width:960px; background:#fff; border-radius:12px; box-shadow:0 6px 20px rgba(16,24,40,0.06); padding:20px; margin-bottom:12px }
@@ -342,7 +523,6 @@ export default {
 @media (max-width:768px) { .app-header { padding:15px } .app-title { font-size:20px } .messages-container { padding:15px 0 } .welcome-content { padding:0 10px } .message-content { max-width:85% } .chat-message { padding:0 10px } }
 
 /* settings modal and button */
-.settings-button { position:absolute; right:14px; top:14px; background:transparent; border:none; cursor:pointer; font-size:14px }
 .settings-modal-overlay { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.4); z-index:1500 }
 .settings-modal { background:#fff; padding:18px; border-radius:8px; width:320px; box-shadow:0 8px 40px rgba(2,6,23,0.2) }
 .settings-modal h3 { margin:0 0 12px 0 }

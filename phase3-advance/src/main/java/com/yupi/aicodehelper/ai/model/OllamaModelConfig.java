@@ -30,21 +30,45 @@ public class OllamaModelConfig {
 
     @Bean
     public ChatModel ollamaChatModel() {
+        // 去除可能的空白字符（如 \r 等）
+        String cleanBaseUrl = baseUrl != null ? baseUrl.trim() : "";
+        String cleanModelName = modelName != null ? modelName.trim() : "";
+        String cleanApiKey = apiKey != null ? apiKey.trim() : "";
+        
+        // 确保 baseUrl 末尾没有斜杠，然后拼接 /v1
+        String apiUrl = cleanBaseUrl.endsWith("/") ? cleanBaseUrl + "v1" : cleanBaseUrl + "/v1";
+        
+        System.out.println("=== OllamaModelConfig ===");
+        System.out.println("baseUrl: '" + cleanBaseUrl + "'");
+        System.out.println("apiUrl: '" + apiUrl + "'");
+        System.out.println("modelName: '" + cleanModelName + "'");
+        System.out.println("apiKey: '" + cleanApiKey.substring(0, Math.min(8, cleanApiKey.length())) + "...'");
+        System.out.println("=========================");
+        
         return OpenAiChatModel.builder()
-                .baseUrl(baseUrl + "/v1")
-                .apiKey(apiKey)
-                .modelName(modelName)
+                .baseUrl(apiUrl)
+                .apiKey(cleanApiKey)
+                .modelName(cleanModelName)
                 .timeout(Duration.ofMinutes(2))
                 .listeners(List.of(chatModelListener))
+                .maxRetries(3)
                 .build();
     }
 
     @Bean
     public StreamingChatModel ollamaStreamingChatModel() {
+        // 去除可能的空白字符
+        String cleanBaseUrl = baseUrl != null ? baseUrl.trim() : "";
+        String cleanModelName = modelName != null ? modelName.trim() : "";
+        String cleanApiKey = apiKey != null ? apiKey.trim() : "";
+        
+        // 确保 baseUrl 末尾没有斜杠，然后拼接 /v1
+        String apiUrl = cleanBaseUrl.endsWith("/") ? cleanBaseUrl + "v1" : cleanBaseUrl + "/v1";
+        
         return OpenAiStreamingChatModel.builder()
-                .baseUrl(baseUrl + "/v1")
-                .apiKey(apiKey)
-                .modelName(modelName)
+                .baseUrl(apiUrl)
+                .apiKey(cleanApiKey)
+                .modelName(cleanModelName)
                 .timeout(Duration.ofMinutes(2))
                 .listeners(List.of(chatModelListener))
                 .build();

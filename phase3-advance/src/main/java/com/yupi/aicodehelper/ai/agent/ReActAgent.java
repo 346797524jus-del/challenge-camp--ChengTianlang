@@ -1,5 +1,7 @@
 package com.yupi.aicodehelper.ai.agent;
 
+import com.yupi.aicodehelper.ai.memory.ConversationMemory;
+import com.yupi.aicodehelper.ai.rag.ContextEnricher;
 import com.yupi.aicodehelper.ai.tools.ToolExecutor;
 import com.yupi.aicodehelper.ai.tools.ToolSpecifications;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -24,6 +26,8 @@ import java.util.regex.Pattern;
  * ReAct 智能体核心 - 实现思考-行动-观察循环
  * 让 AI 能够自主分析问题、调用工具、观察结果并给出最终答案
  * 
+ * 集成 RAG 检索增强、用户偏好感知、会话记忆
+ * 
  * 采用双重策略：
  * 1. 优先使用模型的 function calling 机制
  * 2. 如果模型不调用工具，则解析文本中的工具调用指令
@@ -34,20 +38,23 @@ public class ReActAgent {
 
     private final ChatModel chatModel;
     private final List<Object> tools;
-    private static final int MAX_ITERATIONS = 15;
+    private final ContextEnricher contextEnricher;
+    private final ConversationMemory conversationMemory;
+    private static final int MAX_ITERATIONS = 10;
 
     // 匹配工具调用指令的正则：{{工具名:参数1|参数2|...}}
     private static final Pattern TOOL_CALL_PATTERN = Pattern.compile(
             "\\{\\{\\s*(\\w+)\\s*:\\s*(.*?)\\s*\\}\\}", Pattern.DOTALL);
 
     private static final String REACT_SYSTEM_PROMPT = """
-            你是 AI 编程小助手，一个强大的智能体（Agent），拥有思考和行动能力。
+            你是 AI 智能助手，一个强大的智能体（Agent），拥有思考、检索和行动能力。
             
             ## 核心原则
             1. 你会收到用户的请求，必须使用可用的工具来完成任务
             2. 分析用户需求后，选择合适的工具并调用它
             3. 每次使用工具后，观察结果，然后决定下一步行动
             4. 当收集到足够信息或完成任务后，给出最终答案
+            5. 优先参考提供的上下文信息（知识库、用户偏好、历史记忆）
             
             ## 工作流程（必须严格遵守）
             你必须按以下流程工作：
@@ -65,63 +72,90 @@ public class ReActAgent {
             {{generateWordDocument:AI编程小助手介绍|这是一份关于AI编程小助手的文档。|AI助手}}
             
             可用工具列表：
+            【文档生成类】
             1. generateWordDocument(title, paragraphs, author) - 生成 Word 文档
-               - title: 文档标题
-               - paragraphs: 段落内容数组，用 | 分隔
-               - author: 作者名
-               
             2. generateResume(name, contactInfo, education, workExperience, skills, projects) - 生成简历
-               - name: 姓名
-               - contactInfo: 联系方式
-               - education: 教育背景数组，用 | 分隔
-               - workExperience: 工作经历数组，用 | 分隔
-               - skills: 技能数组，用 | 分隔
-               - projects: 项目数组，用 | 分隔
-               
             3. generateExcelSpreadsheet(fileName, sheetName, columnHeaders, rowData) - 生成 Excel 表格
-               - fileName: 文件名
-               - sheetName: 工作表名
-               - columnHeaders: 列标题数组，用 | 分隔
-               - rowData: 行数据数组，每行用 ; 分隔，每行内用 | 分隔
-               
             4. generateStudyPlan(title, dailyTasks) - 生成学习计划表
-               - title: 计划标题
-               - dailyTasks: 每日任务数组，每项格式: 日期|科目|任务|备注
-               
             5. generatePresentation(title, slides) - 生成 PPT 演示文稿
-               - title: 演示文稿标题
-               - slides: 幻灯片数组，每项格式: 幻灯片标题|内容1|内容2|...
-               
+            
+            【检索与查询类】
             6. interviewQuestionSearch(keyword) - 搜索面试题
-               - keyword: 搜索关键词
+            
+            【项目扫描与分析类】
+            7. scanProjectStructure(directoryPath, recursive) - 扫描项目文件结构
+            8. analyzeProjectDeep(directoryPath, focus) - 深度分析项目
+            
+            【数据清洗类】
+            9. cleanCsvData(filePath, removeDuplicates, removeEmptyRows) - 清洗CSV数据
+            10. cleanJsonlData(filePath) - 清洗JSONL数据
+            11. cleanTextFile(filePath, removeEmptyLines) - 清洗文本文件
+            12. scanAndCleanDirectory(directoryPath) - 扫描目录数据质量
+            
+            【文件合并类】
+            13. mergeCsvFiles(filePaths, includeAllHeaders) - 合并多个CSV文件
+            14. mergeJsonlFiles(filePaths) - 合并多个JSONL文件
+            15. mergeTextFiles(filePaths, addFileHeaders) - 合并多个文本文件
+            16. mergeDirectoryFiles(directoryPath, extension, recursive) - 按类型合并目录文件
             
             ## 强制要求
-            - 当用户要求生成文档/简历/表格/PPT/搜索面试题时，你必须调用对应的工具
+            - 当用户要求生成文档/简历/表格/PPT/搜索面试题/扫描项目/清洗数据/合并文件时，你必须调用对应的工具
             - 调用工具时，必须使用 {{工具名:参数}} 格式
             - 调用工具后，等待工具返回结果，然后根据结果给出最终答案
             - 最终答案必须用中文回复
             - 绝对不要只回复文字而不调用工具
             - 生成文件后，在最终答案中告知用户文件已生成，并说明文件内容和用途
+            - 如果用户偏好中有相关设置（如输出风格、语言偏好），请严格遵守
             """;
 
-    public ReActAgent(ChatModel chatModel, List<Object> tools) {
+    public ReActAgent(ChatModel chatModel, List<Object> tools, 
+                       ContextEnricher contextEnricher, 
+                       ConversationMemory conversationMemory) {
         this.chatModel = chatModel;
         this.tools = tools;
+        this.contextEnricher = contextEnricher;
+        this.conversationMemory = conversationMemory;
     }
 
     /**
-     * 执行 ReAct 循环
-     *
-     * @param userMessage 用户消息
-     * @return 智能体的完整响应，包含思考过程和最终答案
+     * 执行 ReAct 循环（无用户ID，使用简化模式）
      */
     public AgentResponse execute(String userMessage) {
+        return execute(userMessage, null);
+    }
+
+    /**
+     * 执行 ReAct 循环（带用户ID，启用完整上下文增强和记忆）
+     *
+     * @param userMessage 用户消息
+     * @param userId      用户标识
+     * @return 智能体的完整响应，包含思考过程和最终答案
+     */
+    public AgentResponse execute(String userMessage, String userId) {
         List<AgentStep> steps = new ArrayList<>();
         List<ChatMessage> messages = new ArrayList<>();
         List<String> generatedFiles = new ArrayList<>();
 
-        // 添加系统提示
-        messages.add(new SystemMessage(REACT_SYSTEM_PROMPT));
+        // 🔥 增强系统提示：注入用户偏好、知识库、记忆上下文
+        String enrichedPrompt = REACT_SYSTEM_PROMPT;
+        if (userId != null && !userId.isEmpty()) {
+            try {
+                // 1. 注入 RAG 检索上下文（偏好 + 知识库）
+                enrichedPrompt = contextEnricher.enrichSystemPrompt(userMessage, userId, REACT_SYSTEM_PROMPT);
+                log.info("已增强系统提示，长度: {}", enrichedPrompt.length());
+                
+                // 2. 注入会话记忆上下文
+                String memoryContext = conversationMemory.getMemoryContext(userId, userMessage);
+                if (!memoryContext.isEmpty()) {
+                    enrichedPrompt += "\n\n## 🧠 会话记忆\n" + memoryContext;
+                }
+            } catch (Exception e) {
+                log.warn("上下文增强失败，使用基础提示: {}", e.getMessage());
+            }
+        }
+
+        // 添加增强后的系统提示
+        messages.add(new SystemMessage(enrichedPrompt));
         messages.add(new UserMessage(userMessage));
 
         // 获取工具定义（用于 function calling）
@@ -129,6 +163,8 @@ public class ReActAgent {
 
         // 标记是否已经成功执行过工具
         boolean toolExecuted = false;
+        // 记录连续无工具调用的次数，防止死循环
+        int noToolCallCount = 0;
 
         for (int i = 0; i < MAX_ITERATIONS; i++) {
             log.info("ReAct 迭代 {}/{}", i + 1, MAX_ITERATIONS);
@@ -140,7 +176,43 @@ public class ReActAgent {
                     .toolChoice(ToolChoice.AUTO)
                     .build();
 
-            ChatResponse response = chatModel.chat(request);
+            ChatResponse response;
+            try {
+                response = chatModel.chat(request);
+            } catch (Exception e) {
+                log.error("AI 模型调用失败: {}", e.getMessage());
+                String errorDetail = e.getMessage();
+                
+                // 检测认证错误，给出更友好的提示
+                if (errorDetail != null && errorDetail.contains("Authentication")) {
+                    errorDetail = "API 认证失败！请检查以下几点：\n"
+                            + "1. 确保 .env 文件中的 OPENAI_API_KEY 是正确的 DeepSeek API Key\n"
+                            + "2. 确保 API Key 没有过期\n"
+                            + "3. 检查 AI_API_BASE_URL 是否正确（当前: " + System.getenv("AI_API_BASE_URL") + "）\n"
+                            + "4. 检查 AI_MODEL_NAME 是否正确（当前: " + System.getenv("AI_MODEL_NAME") + "）\n"
+                            + "原始错误: " + errorDetail;
+                }
+                
+                // 如果已经执行过工具，返回部分结果
+                if (toolExecuted) {
+                    String partialResult = "AI 模型调用出错，但部分工具已执行完成。\n" + errorDetail;
+                    AgentStep errorStep = new AgentStep();
+                    errorStep.setIteration(i + 1);
+                    errorStep.setThought("AI 模型调用失败");
+                    errorStep.setObservation(errorDetail);
+                    errorStep.setFinalAnswer(partialResult);
+                    steps.add(errorStep);
+                    return new AgentResponse(partialResult, steps, true, generatedFiles);
+                }
+                AgentStep errorStep = new AgentStep();
+                errorStep.setIteration(i + 1);
+                errorStep.setThought("AI 模型调用失败");
+                errorStep.setObservation(errorDetail);
+                errorStep.setFinalAnswer(errorDetail);
+                steps.add(errorStep);
+                return new AgentResponse(errorDetail, steps, false, generatedFiles);
+            }
+
             AiMessage aiMessage = response.aiMessage();
             String responseText = aiMessage.text() != null ? aiMessage.text() : "";
 
@@ -151,31 +223,39 @@ public class ReActAgent {
 
             // 2. 策略一：检查是否有 function calling 工具调用
             if (aiMessage.hasToolExecutionRequests()) {
+                noToolCallCount = 0;
                 var toolRequests = aiMessage.toolExecutionRequests();
+                
+                // 先执行所有工具，收集结果
+                List<ToolExecutionResultMessage> toolResults = new java.util.ArrayList<>();
                 for (var toolRequest : toolRequests) {
-                    step.setAction(toolRequest.name());
-                    step.setActionInput(toolRequest.arguments().toString());
                     log.info("Function calling 调用工具: {}，参数: {}", toolRequest.name(), toolRequest.arguments());
-
                     try {
                         String toolResult = ToolExecutor.execute(tools, toolRequest);
-                        step.setObservation(toolResult);
                         log.info("工具结果: {}", toolResult);
                         toolExecuted = true;
                         
                         // 从工具结果中提取文件路径
                         extractFilePath(toolResult, generatedFiles);
                         
-                        messages.add(aiMessage);
-                        messages.add(new ToolExecutionResultMessage(toolRequest.id(), toolRequest.name(), toolResult));
+                        toolResults.add(new ToolExecutionResultMessage(toolRequest.id(), toolRequest.name(), toolResult));
                     } catch (Exception e) {
                         String errorMsg = "工具执行失败: " + e.getMessage();
-                        step.setObservation(errorMsg);
                         log.error(errorMsg, e);
-                        messages.add(aiMessage);
-                        messages.add(new ToolExecutionResultMessage(toolRequest.id(), toolRequest.name(), errorMsg));
+                        toolResults.add(new ToolExecutionResultMessage(toolRequest.id(), toolRequest.name(), errorMsg));
                     }
                 }
+                
+                // 一次性添加 aiMessage 和所有 tool results（保持消息序列正确）
+                messages.add(aiMessage);
+                for (var tr : toolResults) {
+                    messages.add(tr);
+                }
+                
+                // 记录步骤
+                step.setAction(toolRequests.get(0).name());
+                step.setActionInput(toolRequests.get(0).arguments().toString());
+                step.setObservation("已执行 " + toolRequests.size() + " 个工具调用");
                 steps.add(step);
                 continue;
             }
@@ -183,6 +263,7 @@ public class ReActAgent {
             // 3. 策略二：解析文本中的工具调用指令 {{工具名:参数}}
             Matcher matcher = TOOL_CALL_PATTERN.matcher(responseText);
             if (matcher.find()) {
+                noToolCallCount = 0;
                 String toolName = matcher.group(1).trim();
                 String toolArgs = matcher.group(2).trim();
                 step.setAction(toolName);
@@ -231,14 +312,31 @@ public class ReActAgent {
                 }
             }
 
-            // 5. 没有工具调用，说明模型给出了最终答案
+            // 5. 没有工具调用，检查是否应该结束
+            noToolCallCount++;
+            if (noToolCallCount >= 2 && toolExecuted) {
+                // 连续两次没有工具调用且已执行过工具，认为任务完成
+                step.setFinalAnswer(responseText);
+                steps.add(step);
+                log.info("连续无工具调用，任务完成");
+                return new AgentResponse(responseText, steps, true, generatedFiles);
+            }
+
+            // 如果还没有执行过工具，再给一次机会
+            if (!toolExecuted && i < MAX_ITERATIONS - 1) {
+                messages.add(aiMessage);
+                messages.add(new UserMessage("请分析用户需求并调用合适的工具来完成任务。不要只回复文字。"));
+                steps.add(step);
+                continue;
+            }
+
+            // 6. 模型给出了最终答案
             step.setFinalAnswer(responseText);
             steps.add(step);
             return new AgentResponse(responseText, steps, true, generatedFiles);
         }
 
         // 达到最大迭代次数，返回当前结果
-        // 如果工具已执行过，说明任务已完成，返回最后一条有意义的响应
         if (toolExecuted && !steps.isEmpty()) {
             AgentStep lastStep = steps.get(steps.size() - 1);
             String lastResponse = lastStep.getFinalAnswer();
@@ -263,6 +361,7 @@ public class ReActAgent {
             String filePath = matcher.group().trim();
             if (!generatedFiles.contains(filePath)) {
                 generatedFiles.add(filePath);
+                log.info("提取到生成文件: {}", filePath);
             }
         }
     }

@@ -32,6 +32,18 @@ public class ExcelDocumentTool {
         }
     }
 
+    /**
+     * 安全地生成文件名，限制长度
+     */
+    private String safeFileName(String title, String extension) {
+        String safe = title.replaceAll("[\\\\/:*?\"<>|]", "_");
+        if (safe.length() > 80) {
+            safe = safe.substring(0, 80);
+        }
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+        return safe + "_" + timestamp + extension;
+    }
+
     @Tool(name = "generateExcelSpreadsheet", value = """
             Generates an Excel spreadsheet (.xlsx) with the given sheet name and data.
             Use this tool when the user wants to create data tables, schedules, reports, or any spreadsheet.
@@ -44,8 +56,12 @@ public class ExcelDocumentTool {
             @P(value = "the column headers") String[] columnHeaders,
             @P(value = "the row data, each row is an array of cell values") String[][] rowData) {
         try {
-            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
-            String safeFileName = fileName.replaceAll("[\\\\/:*?\"<>|]", "_") + "_" + timestamp + ".xlsx";
+            // 参数校验
+            if (fileName == null || fileName.trim().isEmpty()) {
+                return "生成表格失败: 文件名不能为空";
+            }
+
+            String safeFileName = safeFileName(fileName, ".xlsx");
             Path filePath = Paths.get(OUTPUT_DIR, safeFileName);
 
             try (XSSFWorkbook workbook = new XSSFWorkbook()) {
@@ -84,7 +100,7 @@ public class ExcelDocumentTool {
                     Row headerRow = sheet.createRow(0);
                     for (int i = 0; i < columnHeaders.length; i++) {
                         Cell cell = headerRow.createCell(i);
-                        cell.setCellValue(columnHeaders[i]);
+                        cell.setCellValue(columnHeaders[i] != null ? columnHeaders[i] : "");
                         cell.setCellStyle(headerStyle);
                     }
                 }
@@ -94,11 +110,13 @@ public class ExcelDocumentTool {
                     for (int rowIdx = 0; rowIdx < rowData.length; rowIdx++) {
                         Row dataRow = sheet.createRow(rowIdx + 1);
                         String[] rowValues = rowData[rowIdx];
-                        for (int colIdx = 0; colIdx < rowValues.length; colIdx++) {
-                            Cell cell = dataRow.createCell(colIdx);
-                            cell.setCellValue(rowValues[colIdx]);
-                            // 交替行颜色
-                            cell.setCellStyle(rowIdx % 2 == 0 ? dataStyle : altDataStyle);
+                        if (rowValues != null) {
+                            for (int colIdx = 0; colIdx < rowValues.length; colIdx++) {
+                                Cell cell = dataRow.createCell(colIdx);
+                                cell.setCellValue(rowValues[colIdx] != null ? rowValues[colIdx] : "");
+                                // 交替行颜色
+                                cell.setCellStyle(rowIdx % 2 == 0 ? dataStyle : altDataStyle);
+                            }
                         }
                     }
                 }
@@ -107,12 +125,13 @@ public class ExcelDocumentTool {
                 if (columnHeaders != null) {
                     for (int i = 0; i < columnHeaders.length; i++) {
                         sheet.autoSizeColumn(i);
-                        // 设置最小宽度
-                        if (sheet.getColumnWidth(i) < 3000) {
+                        // 设置最小宽度（字符宽度 * 256）
+                        int currentWidth = sheet.getColumnWidth(i);
+                        if (currentWidth < 3000) {
                             sheet.setColumnWidth(i, 3000);
                         }
                         // 设置最大宽度
-                        if (sheet.getColumnWidth(i) > 20000) {
+                        if (currentWidth > 20000) {
                             sheet.setColumnWidth(i, 20000);
                         }
                     }
@@ -144,8 +163,12 @@ public class ExcelDocumentTool {
             @P(value = "the title of the study plan") String title,
             @P(value = "the daily study tasks, each item format: 'date|subject|tasks|notes'") String[] dailyTasks) {
         try {
-            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
-            String safeFileName = "学习计划_" + title.replaceAll("[\\\\/:*?\"<>|]", "_") + "_" + timestamp + ".xlsx";
+            // 参数校验
+            if (title == null || title.trim().isEmpty()) {
+                return "生成学习计划失败: 标题不能为空";
+            }
+
+            String safeFileName = safeFileName("学习计划_" + title, ".xlsx");
             Path filePath = Paths.get(OUTPUT_DIR, safeFileName);
 
             try (XSSFWorkbook workbook = new XSSFWorkbook()) {
@@ -184,11 +207,12 @@ public class ExcelDocumentTool {
 
                 if (dailyTasks != null) {
                     for (int i = 0; i < dailyTasks.length; i++) {
+                        if (dailyTasks[i] == null || dailyTasks[i].trim().isEmpty()) continue;
                         String[] parts = dailyTasks[i].split("\\|", 4);
                         Row row = sheet.createRow(i + 2);
                         for (int j = 0; j < Math.min(parts.length, 4); j++) {
                             Cell cell = row.createCell(j);
-                            cell.setCellValue(parts[j].trim());
+                            cell.setCellValue(parts[j] != null ? parts[j].trim() : "");
                             cell.setCellStyle(dataStyle);
                         }
                     }

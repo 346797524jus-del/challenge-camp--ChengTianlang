@@ -32,6 +32,19 @@ public class WordDocumentTool {
         }
     }
 
+    /**
+     * 安全地生成文件名，限制长度
+     */
+    private String safeFileName(String title, String extension) {
+        String safe = title.replaceAll("[\\\\/:*?\"<>|]", "_");
+        // 限制文件名长度不超过100字符
+        if (safe.length() > 80) {
+            safe = safe.substring(0, 80);
+        }
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+        return safe + "_" + timestamp + extension;
+    }
+
     @Tool(name = "generateWordDocument", value = """
             Generates a Word document (.docx) with the given title and content.
             Use this tool when the user wants to create resumes, reports, study plans, or any Word document.
@@ -43,9 +56,13 @@ public class WordDocumentTool {
             @P(value = "the content paragraphs, each paragraph is a separate section") String[] paragraphs,
             @P(value = "the author name, optional") String author) {
         try {
+            // 参数校验
+            if (title == null || title.trim().isEmpty()) {
+                return "生成文档失败: 标题不能为空";
+            }
+
             // 生成文件名
-            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
-            String fileName = title.replaceAll("[\\\\/:*?\"<>|]", "_") + "_" + timestamp + ".docx";
+            String fileName = safeFileName(title, ".docx");
             Path filePath = Paths.get(OUTPUT_DIR, fileName);
 
             try (XWPFDocument document = new XWPFDocument()) {
@@ -73,21 +90,23 @@ public class WordDocumentTool {
                 sepRun.setColor("999999");
 
                 // 添加内容段落
-                for (String paragraph : paragraphs) {
-                    if (paragraph == null || paragraph.trim().isEmpty()) {
-                        continue;
+                if (paragraphs != null) {
+                    for (String paragraph : paragraphs) {
+                        if (paragraph == null || paragraph.trim().isEmpty()) {
+                            continue;
+                        }
+
+                        XWPFParagraph contentParagraph = document.createParagraph();
+                        contentParagraph.setAlignment(ParagraphAlignment.LEFT);
+                        contentParagraph.setSpacingAfter(200);
+                        contentParagraph.setFirstLineIndent(400); // 首行缩进
+
+                        XWPFRun contentRun = contentParagraph.createRun();
+                        contentRun.setText(paragraph);
+                        contentRun.setFontSize(12);
+                        contentRun.setFontFamily("宋体");
+                        contentRun.addBreak();
                     }
-
-                    XWPFParagraph contentParagraph = document.createParagraph();
-                    contentParagraph.setAlignment(ParagraphAlignment.LEFT);
-                    contentParagraph.setSpacingAfter(200);
-                    contentParagraph.setFirstLineIndent(400); // 首行缩进
-
-                    XWPFRun contentRun = contentParagraph.createRun();
-                    contentRun.setText(paragraph);
-                    contentRun.setFontSize(12);
-                    contentRun.setFontFamily("宋体");
-                    contentRun.addBreak();
                 }
 
                 // 添加页脚信息
@@ -129,8 +148,12 @@ public class WordDocumentTool {
             @P(value = "the person's skills") String[] skills,
             @P(value = "the person's projects") String[] projects) {
         try {
-            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
-            String fileName = "简历_" + name + "_" + timestamp + ".docx";
+            // 参数校验
+            if (name == null || name.trim().isEmpty()) {
+                return "生成简历失败: 姓名不能为空";
+            }
+
+            String fileName = safeFileName("简历_" + name, ".docx");
             Path filePath = Paths.get(OUTPUT_DIR, fileName);
 
             try (XWPFDocument document = new XWPFDocument()) {

@@ -22,7 +22,7 @@
         </div>
 
         <!-- Word 预览 -->
-        <div v-if="fileType === 'docx' && !loading && !error" ref="wordPreview" class="word-preview"></div>
+        <div v-show="fileType === 'docx' && !loading && !error" ref="wordPreview" class="word-preview"></div>
 
         <!-- Excel 预览 -->
         <div v-if="fileType === 'xlsx' && !loading && !error" class="excel-preview">
@@ -52,7 +52,17 @@
             <span class="slide-indicator">{{ currentSlide + 1 }} / {{ pptxSlides.length }}</span>
             <button @click="nextSlide" :disabled="currentSlide >= pptxSlides.length - 1">下一页 ▶</button>
           </div>
-          <div class="pptx-slide" ref="pptxContainer"></div>
+          <div class="pptx-slide">
+            <div v-if="pptxSlides.length > 0" class="slide-content">
+              <h3 class="slide-title">{{ pptxSlides[currentSlide]?.[0] || '' }}</h3>
+              <ul class="slide-items">
+                <li v-for="(item, idx) in pptxSlides[currentSlide]?.slice(1)" :key="idx">{{ item }}</li>
+              </ul>
+            </div>
+            <div v-else class="slide-empty">
+              <p>无法解析幻灯片内容</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -123,26 +133,38 @@ export default {
     },
     async renderWord(data) {
       try {
-        const docx = await import('docx-preview')
-        const container = this.$refs.wordPreview
-        if (container) {
-          await docx.renderAsync(data, container, null, {
-            className: 'docx-viewer',
-            inWrapper: true,
-            ignoreWidth: false,
-            ignoreHeight: false,
-            ignoreFonts: false,
-            breakPages: true,
-            ignoreLastRenderedPageBreak: false,
-            experimental: false,
-            trimXmlDeclaration: true,
-            useBase64URL: false,
-            renderHeaders: true,
-            renderFooters: true,
-            renderFootnotes: true,
-            renderEndnotes: true
-          })
-        }
+        // 动态导入 docx-preview
+        const docxModule = await import('docx-preview')
+        const Docx = docxModule.default || docxModule
+        
+        // 使用 $nextTick 确保 DOM 已渲染
+        this.$nextTick(() => {
+          const container = this.$refs.wordPreview
+          if (container && Docx.renderAsync) {
+            Docx.renderAsync(data, container, null, {
+              className: 'docx-viewer',
+              inWrapper: true,
+              ignoreWidth: false,
+              ignoreHeight: false,
+              ignoreFonts: false,
+              breakPages: true,
+              ignoreLastRenderedPageBreak: false,
+              experimental: false,
+              trimXmlDeclaration: true,
+              useBase64URL: false,
+              renderHeaders: true,
+              renderFooters: true,
+              renderFootnotes: true,
+              renderEndnotes: true
+            }).catch(err => {
+              console.error('Word 渲染失败:', err)
+              this.error = 'Word 文档预览失败，请尝试下载查看'
+            })
+          } else {
+            console.error('docx-preview 加载失败或容器不存在')
+            this.error = 'Word 预览组件加载失败'
+          }
+        })
       } catch (err) {
         console.error('Word 渲染失败:', err)
         this.error = 'Word 文档预览失败，请尝试下载查看'
@@ -172,7 +194,6 @@ export default {
     },
     async renderPptx(data) {
       try {
-        // 使用简单的 PPTX 预览 - 提取文本内容
         const JSZip = await import('jszip')
         const zip = await JSZip.loadAsync(data)
         
@@ -181,14 +202,45 @@ export default {
           .filter(name => name.match(/^ppt\/slides\/slide\d+\.xml$/))
           .sort()
         
+        if (slideFiles.length === 0) {
+          this.error = '未找到幻灯片内容'
+          return
+        }
+        
         const slides = []
         for (const slideFile of slideFiles) {
           const content = await zip.file(slideFile).async('text')
-          // 简单提取文本内容
-          const texts = content.match(/<a:t[^>]*>([^<]+)<\/a:t>/g) || []
-          const slideTexts = texts.map(t => t.replace(/<[^>]+>/g, ''))
-          slides.push(slideTexts)
+          
+          // 提取所有文本内容 - 兼容带命名空间和不带命名空间的 XML
+          // PPTX 中的文本通常在 <a:t> 或 <a:t xmlns:a="..."> 标签中
+          const textMatches = []
+          
+          // 方法1: 匹配 <a:t>text</a:t> (带命名空间)
+          const regex1 = /<a:t[^>]*>([^<]+)<\/a:t>/g
+          let match
+          while ((match = regex1.exec(content)) !== null) {
+            textMatches.push(match[1])
+          }
+          
+          // 方法2: 如果没找到，尝试匹配任何 <t>text</t> 标签
+          if (textMatches.length === 0) {
+            const regex2 = /<[^:]*:t[^>]*>([^<]+)<\/[^:]*:t>/g
+            while ((match = regex2.exec(content)) !== null) {
+              textMatches.push(match[1])
+            }
+          }
+          
+          // 方法3: 如果还没找到，尝试匹配 <a:r><a:t>text</a:t></a:r> 结构
+          if (textMatches.length === 0) {
+            const regex3 = /<a:r>[\s\S]*?<a:t[^>]*>([^<]+)<\/a:t>[\s\S]*?<\/a:r>/g
+            while ((match = regex3.exec(content)) !== null) {
+              textMatches.push(match[1])
+            }
+          }
+          
+          slides.push(textMatches)
         }
+        
         this.pptxSlides = slides
         this.currentSlide = 0
       } catch (err) {
@@ -445,6 +497,45 @@ export default {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
+.slide-content {
+  max-width: 100%;
+}
+
+.slide-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 24px;
+  padding-bottom: 12px;
+  border-bottom: 3px solid #0b74ff;
+}
+
+.slide-items {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.slide-items li {
+  padding: 10px 16px;
+  margin-bottom: 8px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border-left: 4px solid #0b74ff;
+  color: #334155;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.slide-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  color: #94a3b8;
+  font-size: 16px;
+}
+
 /* 深色主题 */
 .theme-dark .file-preview-modal {
   background: #0f172a;
@@ -489,6 +580,17 @@ export default {
 .theme-dark .pptx-slide {
   background: #1e293b;
   border-color: #334155;
+}
+
+.theme-dark .slide-title {
+  color: #e2e8f0;
+  border-bottom-color: #3b82f6;
+}
+
+.theme-dark .slide-items li {
+  background: #1e293b;
+  border-left-color: #3b82f6;
+  color: #cbd5e1;
 }
 
 .theme-dark .pptx-controls button {

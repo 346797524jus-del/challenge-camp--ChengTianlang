@@ -5,6 +5,9 @@ echo   AI 编程小助手 - 智能体模式启动脚本
 echo ========================================
 echo.
 
+REM 切换到项目目录
+cd /d "%~dp0"
+
 REM 检查 .env 文件是否存在
 if not exist ".env" (
     echo [错误] 找不到 .env 文件！
@@ -16,9 +19,13 @@ if not exist ".env" (
 )
 
 REM 从 .env 文件加载环境变量
-echo [1/3] 加载环境变量...
-for /f "tokens=* delims=" %%a in ('.env') do (
-    set %%a
+echo [1/4] 加载环境变量...
+
+REM 读取 .env 文件中的变量（不使用延迟扩展，避免兼容性问题）
+for /f "usebackq tokens=1,* delims==" %%a in (".env") do (
+    if /i "%%a"=="AI_API_BASE_URL" set "AI_API_BASE_URL=%%b"
+    if /i "%%a"=="AI_MODEL_NAME" set "AI_MODEL_NAME=%%b"
+    if /i "%%a"=="OPENAI_API_KEY" set "OPENAI_API_KEY=%%b"
 )
 
 REM 检查 API Key 是否已设置
@@ -30,7 +37,6 @@ if "%OPENAI_API_KEY%"=="" (
 )
 if "%OPENAI_API_KEY%"=="YOUR_API_KEY_HERE" (
     echo [错误] 请先在 .env 文件中填入你的真实 DeepSeek API Key！
-    echo 当前值: %OPENAI_API_KEY%
     pause
     exit /b 1
 )
@@ -40,16 +46,44 @@ echo   Model: %AI_MODEL_NAME%
 echo   API Key: %OPENAI_API_KEY:~0,8%...
 echo.
 
-REM 启动后端
-echo [2/3] 启动后端服务 (端口 8081)...
-start "Backend" cmd /c "title Backend && echo 后端服务启动中... && .\mvnw spring-boot:run && pause"
+REM 先清理编译缓存，确保重新编译
+echo [2/4] 清理并重新编译后端...
+call mvnw.cmd clean compile -q
+if %errorlevel% neq 0 (
+    echo [错误] 编译失败，请检查代码错误
+    pause
+    exit /b 1
+)
+echo   编译成功！
+
+REM 启动后端 - 使用临时批处理文件来设置环境变量并启动
+echo [3/4] 启动后端服务 (端口 8081)...
+
+REM 创建一个临时批处理文件来启动后端（解决环境变量传递问题）
+(
+echo @echo off
+echo title Backend
+echo cd /d "%~dp0"
+echo set AI_API_BASE_URL=%AI_API_BASE_URL%
+echo set AI_MODEL_NAME=%AI_MODEL_NAME%
+echo set OPENAI_API_KEY=%OPENAI_API_KEY%
+echo echo 环境变量已设置:
+echo echo   AI_API_BASE_URL=%%AI_API_BASE_URL%%
+echo echo   AI_MODEL_NAME=%%AI_MODEL_NAME%%
+echo echo   OPENAI_API_KEY=%%OPENAI_API_KEY:~0,8%%...
+echo echo.
+echo mvnw.cmd spring-boot:run -q
+echo pause
+) > "%TEMP%\start_backend.bat"
+
+start "Backend" cmd /c ""%TEMP%\start_backend.bat""
 
 REM 等待后端启动
 echo   等待后端启动...
-timeout /t 20 /nobreak >nul
+timeout /t 25 /nobreak >nul
 
 REM 启动前端
-echo [3/3] 启动前端服务...
+echo [4/4] 启动前端服务...
 cd ai-code-helper-frontend
 start "Frontend" cmd /c "title Frontend && npm run dev -- --host && pause"
 cd ..

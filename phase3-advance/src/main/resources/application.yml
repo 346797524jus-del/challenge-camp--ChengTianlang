@@ -11,11 +11,13 @@ langchain4j:
   open-ai:
     chat-model:
       base-url: ${AI_API_BASE_URL:https://api.deepseek.com}
-      model-name: ${AI_MODEL_NAME:deepseek-v4-pro}
+      model-name: ${AI_MODEL_NAME:deepseek-chat}
       api-key: ${OPENAI_API_KEY:}
       log-requests: true
       log-responses: true
+      max-retries: 3
     streaming-chat-model:
       base-url: ${AI_API_BASE_URL:https://api.deepseek.com}
-      model-name: ${AI_MODEL_NAME:deepseek-v4-pro}
+      model-name: ${AI_MODEL_NAME:deepseek-chat}
       api-key: ${OPENAI_API_KEY:}
+      max-retries: 3

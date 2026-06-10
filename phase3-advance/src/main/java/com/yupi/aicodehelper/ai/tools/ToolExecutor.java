@@ -3,8 +3,8 @@ package com.yupi.aicodehelper.ai.tools;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolSpecification;
 import lombok.extern.slf4j.Slf4j;
 
 import java.lang.reflect.Method;
@@ -156,7 +156,27 @@ public class ToolExecutor {
             return new Object[0];
         }
 
-        JsonObject jsonArgs = gson.fromJson(argumentsJson, JsonObject.class);
+        // 处理空参数
+        if (argumentsJson == null || argumentsJson.trim().isEmpty()) {
+            Object[] args = new Object[paramTypes.length];
+            for (int i = 0; i < paramTypes.length; i++) {
+                args[i] = null;
+            }
+            return args;
+        }
+
+        JsonObject jsonArgs;
+        try {
+            jsonArgs = JsonParser.parseString(argumentsJson).getAsJsonObject();
+        } catch (Exception e) {
+            log.warn("JSON 参数解析失败: {}, 使用空参数", argumentsJson);
+            Object[] args = new Object[paramTypes.length];
+            for (int i = 0; i < paramTypes.length; i++) {
+                args[i] = null;
+            }
+            return args;
+        }
+
         Object[] args = new Object[paramTypes.length];
 
         // 收集 JSON 中所有 key（按插入顺序）
@@ -182,16 +202,21 @@ public class ToolExecutor {
 
             Class<?> paramType = paramTypes[i];
             
-            // 先尝试按参数名匹配
-            if (paramName != null && jsonArgs.has(paramName)) {
-                args[i] = gson.fromJson(jsonArgs.get(paramName), paramType);
-            } 
-            // 如果按名匹配失败，按 JSON key 的顺序位置匹配
-            else if (i < jsonKeys.size()) {
-                String key = jsonKeys.get(i);
-                args[i] = gson.fromJson(jsonArgs.get(key), paramType);
-            }
-            else {
+            try {
+                // 先尝试按参数名匹配
+                if (paramName != null && jsonArgs.has(paramName)) {
+                    args[i] = gson.fromJson(jsonArgs.get(paramName), paramType);
+                } 
+                // 如果按名匹配失败，按 JSON key 的顺序位置匹配
+                else if (i < jsonKeys.size()) {
+                    String key = jsonKeys.get(i);
+                    args[i] = gson.fromJson(jsonArgs.get(key), paramType);
+                }
+                else {
+                    args[i] = null;
+                }
+            } catch (Exception e) {
+                log.warn("参数 {} 解析失败: {}", paramName, e.getMessage());
                 args[i] = null;
             }
         }

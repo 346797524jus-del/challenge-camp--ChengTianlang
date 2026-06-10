@@ -3,7 +3,6 @@ package com.yupi.aicodehelper.ai.tools;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.poi.sl.usermodel.TextParagraph;
 import org.apache.poi.xslf.usermodel.*;
 import org.springframework.stereotype.Component;
 
@@ -32,138 +31,122 @@ public class PptDocumentTool {
         }
     }
 
+    /**
+     * 安全地生成文件名，限制长度
+     */
+    private String safeFileName(String title, String extension) {
+        String safe = title.replaceAll("[\\\\/:*?\"<>|]", "_");
+        if (safe.length() > 80) {
+            safe = safe.substring(0, 80);
+        }
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+        return safe + "_" + timestamp + extension;
+    }
+
     @Tool(name = "generatePresentation", value = """
             Generates a PowerPoint presentation (.pptx) with the given title and slides.
-            Use this tool when the user wants to create presentations, slide decks, or teaching materials.
-            Each slide should have a title and content lines.
+            Use this tool when the user wants to create presentations, slide decks, or courseware.
+            Each slide should have a title and content items.
             Returns the file path of the generated presentation.
             """)
     public String generatePresentation(
             @P(value = "the title of the presentation") String title,
-            @P(value = "the slides, each slide format: 'slideTitle|contentLine1|contentLine2|...'") String[] slides) {
+            @P(value = "the slides, each item format: 'slideTitle|content1|content2|...'") String[] slides) {
         try {
-            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
-            String safeFileName = title.replaceAll("[\\\\/:*?\"<>|]", "_") + "_" + timestamp + ".pptx";
-            Path filePath = Paths.get(OUTPUT_DIR, safeFileName);
+            // 参数校验
+            if (title == null || title.trim().isEmpty()) {
+                return "生成演示文稿失败: 标题不能为空";
+            }
+            if (slides == null || slides.length == 0) {
+                return "生成演示文稿失败: 幻灯片内容不能为空";
+            }
+
+            String fileName = safeFileName(title, ".pptx");
+            Path filePath = Paths.get(OUTPUT_DIR, fileName);
 
             try (XMLSlideShow ppt = new XMLSlideShow()) {
-                // 设置页面大小
-                ppt.setPageSize(new java.awt.Dimension(1024, 768));
+                // 设置页面大小（宽屏 16:9）
+                ppt.setPageSize(new java.awt.Dimension(1024, 576));
 
-                // 1. 创建封面页
+                // 创建标题幻灯片
                 XSLFSlide titleSlide = ppt.createSlide();
-                XSLFTextShape titleShape = titleSlide.createAutoShape();
-                titleShape.setShapeType(org.apache.poi.sl.usermodel.ShapeType.RECT);
-                titleShape.setAnchor(new java.awt.Rectangle(100, 200, 824, 200));
+                XSLFTextShape titleShape = titleSlide.createTextBox();
+                titleShape.setAnchor(new java.awt.Rectangle(50, 150, 924, 200));
 
                 XSLFTextParagraph titlePara = titleShape.addNewTextParagraph();
-                titlePara.setTextAlign(TextParagraph.TextAlign.CENTER);
+                titlePara.setTextAlign(XSLFTextParagraph.TextAlign.CENTER);
                 XSLFTextRun titleRun = titlePara.addNewTextRun();
                 titleRun.setText(title);
-                titleRun.setFontSize(40.0);
+                titleRun.setFontSize(44.0);
                 titleRun.setBold(true);
-                titleRun.setFontColor(java.awt.Color.decode("#1a5276"));
+                titleRun.setFontColor(java.awt.Color.decode("#1a56db"));
 
-                // 添加副标题
+                // 副标题
                 XSLFTextParagraph subPara = titleShape.addNewTextParagraph();
-                subPara.setTextAlign(TextParagraph.TextAlign.CENTER);
+                subPara.setTextAlign(XSLFTextParagraph.TextAlign.CENTER);
                 XSLFTextRun subRun = subPara.addNewTextRun();
                 subRun.setText("由 AI 编程小助手生成");
                 subRun.setFontSize(18.0);
                 subRun.setFontColor(java.awt.Color.GRAY);
 
-                // 添加日期
-                XSLFTextParagraph datePara = titleShape.addNewTextParagraph();
-                datePara.setTextAlign(TextParagraph.TextAlign.CENTER);
-                XSLFTextRun dateRun = datePara.addNewTextRun();
-                dateRun.setText(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
-                dateRun.setFontSize(14.0);
-                dateRun.setFontColor(java.awt.Color.LIGHT_GRAY);
+                // 创建内容幻灯片
+                for (String slide : slides) {
+                    if (slide == null || slide.trim().isEmpty()) continue;
 
-                // 2. 创建内容页
-                if (slides != null) {
-                    for (String slideData : slides) {
-                        if (slideData == null || slideData.trim().isEmpty()) continue;
+                    String[] parts = slide.split("\\|", -1);
+                    String slideTitle = parts.length > 0 ? parts[0].trim() : "幻灯片";
 
-                        String[] parts = slideData.split("\\|", 2);
-                        String slideTitle = parts[0].trim();
-                        String content = parts.length > 1 ? parts[1].trim() : "";
+                    XSLFSlide contentSlide = ppt.createSlide();
 
-                        XSLFSlide contentSlide = ppt.createSlide();
+                    // 幻灯片标题
+                    XSLFTextShape slideTitleShape = contentSlide.createTextBox();
+                    slideTitleShape.setAnchor(new java.awt.Rectangle(50, 20, 924, 50));
+                    XSLFTextParagraph stp = slideTitleShape.addNewTextParagraph();
+                    XSLFTextRun str = stp.addNewTextRun();
+                    str.setText(slideTitle);
+                    str.setFontSize(28.0);
+                    str.setBold(true);
+                    str.setFontColor(java.awt.Color.decode("#1a56db"));
 
-                        // 幻灯片标题
-                        XSLFTextShape slideTitleShape = contentSlide.createAutoShape();
-                        slideTitleShape.setShapeType(org.apache.poi.sl.usermodel.ShapeType.RECT);
-                        slideTitleShape.setAnchor(new java.awt.Rectangle(50, 30, 924, 60));
+                    // 幻灯片内容
+                    if (parts.length > 1) {
+                        XSLFTextShape contentShape = contentSlide.createTextBox();
+                        contentShape.setAnchor(new java.awt.Rectangle(50, 80, 924, 450));
 
-                        XSLFTextParagraph stPara = slideTitleShape.addNewTextParagraph();
-                        XSLFTextRun stRun = stPara.addNewTextRun();
-                        stRun.setText(slideTitle);
-                        stRun.setFontSize(28.0);
-                        stRun.setBold(true);
-                        stRun.setFontColor(java.awt.Color.decode("#2c3e50"));
+                        for (int i = 1; i < parts.length; i++) {
+                            String content = parts[i].trim();
+                            if (content.isEmpty()) continue;
 
-                        // 分隔线
-                        XSLFTextShape lineShape = contentSlide.createAutoShape();
-                        lineShape.setShapeType(org.apache.poi.sl.usermodel.ShapeType.RECT);
-                        lineShape.setAnchor(new java.awt.Rectangle(50, 95, 924, 3));
-                        lineShape.setFillColor(java.awt.Color.decode("#3498db"));
+                            XSLFTextParagraph contentPara = contentShape.addNewTextParagraph();
+                            contentPara.setIndentLevel(0);
+                            contentPara.setSpaceAfter(10.0);
 
-                        // 内容
-                        XSLFTextShape contentShape = contentSlide.createAutoShape();
-                        contentShape.setShapeType(org.apache.poi.sl.usermodel.ShapeType.RECT);
-                        contentShape.setAnchor(new java.awt.Rectangle(70, 120, 884, 600));
-
-                        String[] contentLines = content.split("\\n");
-                        for (String line : contentLines) {
-                            line = line.trim();
-                            if (line.isEmpty()) continue;
-
-                            XSLFTextParagraph cPara = contentShape.addNewTextParagraph();
-                            cPara.setTextAlign(TextParagraph.TextAlign.LEFT);
-                            cPara.setIndentLevel(0);
-                            cPara.setSpaceAfter(200.0);
-
-                            XSLFTextRun cRun = cPara.addNewTextRun();
-
-                            // 支持简单的标记：**粗体**
-                            if (line.startsWith("**") && line.endsWith("**")) {
-                                cRun.setText(line.replace("**", ""));
-                                cRun.setBold(true);
-                                cRun.setFontSize(20.0);
-                                cRun.setFontColor(java.awt.Color.decode("#2c3e50"));
-                            } else if (line.startsWith("- ") || line.startsWith("• ")) {
-                                cRun.setText(line);
-                                cRun.setFontSize(16.0);
-                                cRun.setFontColor(java.awt.Color.decode("#34495e"));
-                            } else {
-                                cRun.setText(line);
-                                cRun.setFontSize(16.0);
-                                cRun.setFontColor(java.awt.Color.decode("#34495e"));
-                            }
+                            XSLFTextRun contentRun = contentPara.addNewTextRun();
+                            contentRun.setText("• " + content);
+                            contentRun.setFontSize(18.0);
+                            contentRun.setFontColor(java.awt.Color.DARK_GRAY);
                         }
                     }
                 }
 
-                // 3. 创建结束页
+                // 创建结束幻灯片
                 XSLFSlide endSlide = ppt.createSlide();
-                XSLFTextShape endShape = endSlide.createAutoShape();
-                endShape.setShapeType(org.apache.poi.sl.usermodel.ShapeType.RECT);
-                endShape.setAnchor(new java.awt.Rectangle(100, 250, 824, 200));
+                XSLFTextShape endShape = endSlide.createTextBox();
+                endShape.setAnchor(new java.awt.Rectangle(50, 150, 924, 200));
 
                 XSLFTextParagraph endPara = endShape.addNewTextParagraph();
-                endPara.setTextAlign(TextParagraph.TextAlign.CENTER);
+                endPara.setTextAlign(XSLFTextParagraph.TextAlign.CENTER);
                 XSLFTextRun endRun = endPara.addNewTextRun();
-                endRun.setText("感谢观看！");
-                endRun.setFontSize(36.0);
+                endRun.setText("感谢观看");
+                endRun.setFontSize(40.0);
                 endRun.setBold(true);
-                endRun.setFontColor(java.awt.Color.decode("#1a5276"));
+                endRun.setFontColor(java.awt.Color.decode("#1a56db"));
 
                 XSLFTextParagraph endSubPara = endShape.addNewTextParagraph();
-                endSubPara.setTextAlign(TextParagraph.TextAlign.CENTER);
+                endSubPara.setTextAlign(XSLFTextParagraph.TextAlign.CENTER);
                 XSLFTextRun endSubRun = endSubPara.addNewTextRun();
-                endSubRun.setText("如有问题，欢迎随时提问");
-                endSubRun.setFontSize(18.0);
+                endSubRun.setText(title);
+                endSubRun.setFontSize(20.0);
                 endSubRun.setFontColor(java.awt.Color.GRAY);
 
                 // 写入文件
@@ -174,11 +157,11 @@ public class PptDocumentTool {
 
             String absolutePath = filePath.toAbsolutePath().toString();
             log.info("PPT 演示文稿已生成: {}", absolutePath);
-            return "PPT 演示文稿已成功生成！\n文件路径: " + absolutePath + "\n文件名: " + safeFileName;
+            return "PPT 演示文稿已成功生成！\n文件路径: " + absolutePath + "\n文件名: " + fileName;
 
         } catch (Exception e) {
-            log.error("生成 PPT 失败", e);
-            return "生成 PPT 失败: " + e.getMessage();
+            log.error("生成 PPT 演示文稿失败", e);
+            return "生成演示文稿失败: " + e.getMessage();
         }
     }
 }

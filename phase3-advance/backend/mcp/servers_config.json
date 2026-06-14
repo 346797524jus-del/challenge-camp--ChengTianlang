@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "weather": {
+      "command": "python",
+      "args": ["-m", "mcp_server_weather"],
+      "env": {
+        "API_KEY": "demo"
+      }
+    },
+    "write": {
+      "command": "python",
+      "args": ["-m", "mcp_server_write"],
+      "env": {}
+    },
+    "amap-maps": {
+      "url": "https://mcp.amap.com/sse",
+      "type": "sse"
+    }
+  }
+}

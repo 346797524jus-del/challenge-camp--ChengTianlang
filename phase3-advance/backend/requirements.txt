@@ -1,0 +1,53 @@
+# Core Framework
+fastapi==0.115.0
+uvicorn[standard]==0.30.0
+pydantic==2.9.0
+pydantic-settings==2.5.0
+python-multipart==0.0.12
+sse-starlette==2.1.0
+
+# Database
+sqlalchemy==2.0.35
+pymysql==1.1.1
+aiomysql==0.2.0
+
+# AI/ML - DashScope + LangChain
+langchain==0.3.0
+langchain-community==0.3.0
+langchain-openai==0.2.0
+openai==1.50.0
+tiktoken==0.7.0
+
+# MCP Protocol
+langchain-mcp-adapters>=0.1.0
+
+# Vector Database
+pymilvus==2.4.0
+chromadb==0.5.0
+
+# File Processing
+python-docx==1.1.2
+openpyxl==3.1.5
+python-pptx==0.6.23
+PyPDF2==3.0.1
+pdfplumber==0.11.0
+Pillow==10.4.0
+pandas==2.2.0
+docx2txt==0.8
+
+# Web Search
+duckduckgo-search==6.2.0
+beautifulsoup4==4.12.3
+lxml==5.3.0
+requests==2.32.3
+httpx==0.27.0
+
+# Async & Utils
+aiofiles==24.1.0
+python-dotenv==1.0.1
+redis==5.1.0
+cachetools==5.5.0
+tenacity==9.0.0
+
+# Logging
+loguru==0.7.2

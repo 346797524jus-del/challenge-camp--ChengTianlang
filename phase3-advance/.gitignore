@@ -1,41 +1,30 @@
-### CUSTOM ###
-application-local.yml
-# .env 文件包含 API Key 等敏感信息，禁止入库
-.env
+# Old Java backend (replaced by backend/)
+src/
+pom.xml
+mvnw
+mvnw.cmd
 
-HELP.md
-target/
-.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
+# Old Vue frontend (replaced by frontend/)
+ai-code-helper-frontend/
 
-### STS ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+venv/
+.venv/
 
-### IntelliJ IDEA ###
-.idea
-*.iws
-*.iml
-*.ipr
-
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-build/
-!**/src/main/**/build/
-!**/src/test/**/build/
-
-### VS Code ###
-.vscode/
-
-### Generated Documents ###
+# Workspace
+uploads/
 generated-docs/
+workspace/
+logs/
+
+# Environment
+.env
+*.db
+
+# Node
+node_modules/
+dist/
